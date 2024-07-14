@@ -35,14 +35,12 @@ def test(test_loader, model, thre):
     for i, sample_batched in enumerate(test_loader):
         image, depth = sample_batched['image'], sample_batched['depth']
 
-        depth = depth.cuda(async=True)
+        depth = depth.cuda(non_blocking=True)
         image = image.cuda()
 
-        image = torch.autograd.Variable(image, volatile=True)
-        depth = torch.autograd.Variable(depth, volatile=True)
- 
-        output = model(image)
-        output = torch.nn.functional.upsample(output, size=[depth.size(2),depth.size(3)], mode='bilinear')
+        with torch.no_grad():
+            output = model(image)
+            output = torch.nn.functional.interpolate(output, size=[depth.size(2),depth.size(3)], mode='bilinear')
 
         depth_edge = edge_detection(depth)
         output_edge = edge_detection(output)

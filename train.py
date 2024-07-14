@@ -54,15 +54,20 @@ def main():
         batch_size = 32
     else:
         model = model.cuda()
-        batch_size = 8
+        batch_size = 4
+
+    print("Is model cuda", next(model.parameters()).is_cuda)
 
     cudnn.benchmark = True
     optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=args.weight_decay)
 
     train_loader = loaddata.getTrainingData(batch_size)
 
+    print("Data loaded")
+
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch)
+        print('Epoch {0} start'.format(epoch))
         train(train_loader, model, optimizer, epoch)
     
     save_checkpoint({'state_dict': model.state_dict()})
@@ -82,14 +87,13 @@ def train(train_loader, model, optimizer, epoch):
     for i, sample_batched in enumerate(train_loader):
         image, depth = sample_batched['image'], sample_batched['depth']
 
-        depth = depth.cuda(async=True)
+        depth = depth.cuda(non_blocking=True)
         image = image.cuda()
-        image = torch.autograd.Variable(image)
-        depth = torch.autograd.Variable(depth)
 
         ones = torch.ones(depth.size(0), 1, depth.size(2),depth.size(3)).float().cuda()
-        ones = torch.autograd.Variable(ones)
         optimizer.zero_grad()
+
+        print("is cuda memory", image.is_cuda, depth.is_cuda, ones.is_cuda)
 
         output = model(image)
 
@@ -100,22 +104,30 @@ def train(train_loader, model, optimizer, epoch):
         output_grad_dx = output_grad[:, 0, :, :].contiguous().view_as(depth)
         output_grad_dy = output_grad[:, 1, :, :].contiguous().view_as(depth)
 
-        depth_normal = torch.cat((-depth_grad_dx, -depth_grad_dy, ones), 1)
-        output_normal = torch.cat((-output_grad_dx, -output_grad_dy, ones), 1)
+        print("grads calculated")
+
+        depth_normal = torch.cat((-depth_grad_dx, -depth_grad_dy, ones), 1).cuda()
+        output_normal = torch.cat((-output_grad_dx, -output_grad_dy, ones), 1).cuda()
 
         # depth_normal = F.normalize(depth_normal, p=2, dim=1)
         # output_normal = F.normalize(output_normal, p=2, dim=1)
 
-        loss_depth = torch.log(torch.abs(output - depth) + 0.5).mean()
-        loss_dx = torch.log(torch.abs(output_grad_dx - depth_grad_dx) + 0.5).mean()
-        loss_dy = torch.log(torch.abs(output_grad_dy - depth_grad_dy) + 0.5).mean()
-        loss_normal = torch.abs(1 - cos(output_normal, depth_normal)).mean()
+        loss_depth = torch.log(torch.abs(output - depth) + 0.5).mean().cuda()
+        loss_dx = torch.log(torch.abs(output_grad_dx - depth_grad_dx) + 0.5).mean().cuda()
+        loss_dy = torch.log(torch.abs(output_grad_dy - depth_grad_dy) + 0.5).mean().cuda()
+        loss_normal = torch.abs(1 - cos(output_normal, depth_normal)).mean().cuda()
 
         loss = loss_depth + loss_normal + (loss_dx + loss_dy)
 
-        losses.update(loss.data[0], image.size(0))
+        print("loss calculated")
+
+        losses.update(loss.data.item(), image.size(0))
+        print("loss updated")
         loss.backward()
+        print("loss backward done")
         optimizer.step()
+
+        print("optimizer step done")
 
         batch_time.update(time.time() - end)
         end = time.time()

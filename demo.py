@@ -36,14 +36,14 @@ def main():
     model.eval()
 
     nyu2_loader = loaddata.readNyu2('data/demo/img_nyu2.png')
-  
+
     test(nyu2_loader, model)
 
 
 def test(nyu2_loader, model):
-    for i, image in enumerate(nyu2_loader):     
-        image = torch.autograd.Variable(image, volatile=True).cuda()
-        out = model(image)
+    for i, image in enumerate(nyu2_loader):
+        with torch.no_grad():
+            out = model(image)
         
         matplotlib.image.imsave('data/demo/out.png', out.view(out.size(2),out.size(3)).data.cpu().numpy())
 

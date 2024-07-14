@@ -1,0 +1,5 @@
+pretrained_model
+data
+
+**/*/__pycache__/
+__pycache__/
