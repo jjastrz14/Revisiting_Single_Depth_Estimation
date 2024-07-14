@@ -84,6 +84,7 @@ def train(train_loader, model, optimizer, epoch):
     get_gradient = sobel.Sobel().cuda()
 
     end = time.time()
+    print("TL", train_loader.__len__())
     for i, sample_batched in enumerate(train_loader):
         image, depth = sample_batched['image'], sample_batched['depth']
 

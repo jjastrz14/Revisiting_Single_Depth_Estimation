@@ -10,18 +10,16 @@ from nyu_transform import *
 class depthDataset(Dataset):
     """Face Landmarks dataset."""
 
-    def __init__(self, csv_file, transform=None):
-        self.frame = pd.read_csv(csv_file, header=None)
+    def __init__(self, npz_file, transform=None):
+        self.frame = np.load(npz_file)
         self.transform = transform
 
     def __getitem__(self, idx):
-        image_name = self.frame.loc[idx, 0]
-        depth_name = self.frame.loc[idx, 1]
+        image = self.frame['images'][idx]
+        depth = self.frame['depth'][idx]
+        labels = self.frame['labels'][idx]
 
-        image = Image.open(image_name)
-        depth = Image.open(depth_name)
-
-        sample = {'image': image, 'depth': depth}
+        sample = {'image': image, 'depth': depth, 'labels': labels}
 
         if self.transform:
             sample = self.transform(sample)
@@ -29,7 +27,7 @@ class depthDataset(Dataset):
         return sample
 
     def __len__(self):
-        return len(self.frame)
+        return len(self.frame['images'])
 
 
 def getTrainingData(batch_size=64):
@@ -44,7 +42,7 @@ def getTrainingData(batch_size=64):
     __imagenet_stats = {'mean': [0.485, 0.456, 0.406],
                         'std': [0.229, 0.224, 0.225]}
 
-    transformed_training = depthDataset(csv_file='./data/nyu2_train.csv',
+    transformed_training = depthDataset(npz_file='./data/nyu_depth_v2_labeled.npz',
                                         transform=transforms.Compose([
                                             Scale(240),
                                             RandomHorizontalFlip(),
@@ -61,6 +59,7 @@ def getTrainingData(batch_size=64):
                                             Normalize(__imagenet_stats['mean'],
                                                       __imagenet_stats['std'])
                                         ]))
+    print(transformed_training.__len__())
 
     dataloader_training = DataLoader(transformed_training, batch_size,
                                      shuffle=True, num_workers=4, pin_memory=False)
@@ -75,11 +74,12 @@ def getTestingData(batch_size=64):
     # scale = random.uniform(1, 1.5)
     transformed_testing = depthDataset(csv_file='./data/nyu2_test.csv',
                                        transform=transforms.Compose([
-                                           Scale(240),
-                                           CenterCrop([304, 228], [304, 228]),
-                                           ToTensor(is_test=True),
-                                           Normalize(__imagenet_stats['mean'],
-                                                     __imagenet_stats['std'])
+                                            Scale(240),
+                                            CenterCrop([304, 228], [304, 228]),
+                                            CombineWithLabel(),
+                                            ToTensor(is_test=True),
+                                            Normalize(__imagenet_stats['mean'],
+                                                    __imagenet_stats['std'])
                                        ]))
 
     dataloader_testing = DataLoader(transformed_testing, batch_size,

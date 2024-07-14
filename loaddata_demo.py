@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
+from nyu_transform import CombineWithLabel
 from torchvision import transforms, utils
 from PIL import Image
 import random
@@ -34,6 +35,7 @@ def readNyu2(filename):
                         transform=transforms.Compose([
                         Scale([320, 240]),
                         CenterCrop([304, 228]),
+                        CombineWithLabel(),
                         ToTensor(),                                
                         Normalize(__imagenet_stats['mean'],
                                  __imagenet_stats['std'])
