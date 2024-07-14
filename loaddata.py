@@ -48,6 +48,7 @@ def getTrainingData(batch_size=64):
                                             RandomHorizontalFlip(),
                                             RandomRotate(5),
                                             CenterCrop([304, 228], [152, 114]),
+                                            CombineWithLabel(),
                                             ToTensor(),
                                             Lighting(0.1, __imagenet_pca[
                                                 'eigval'], __imagenet_pca['eigvec']),
