@@ -35,11 +35,12 @@ def readNyu2(filename):
                         transform=transforms.Compose([
                         Scale([320, 240]),
                         CenterCrop([304, 228]),
-                        CombineWithLabel(),
-                        ToTensor(),                                
+                        ToTensor(),                               
                         Normalize(__imagenet_stats['mean'],
-                                 __imagenet_stats['std'])
-                       ]))
+                                    __imagenet_stats['std'])
+                        ],
+                        CombineWithLabel(),
+                    ))
 
     image = DataLoader(image_trans, batch_size=1, shuffle=False, num_workers=0, pin_memory=False)
 

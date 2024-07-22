@@ -91,6 +91,7 @@ class Scale(object):
 
         image = self.changeScale(image, self.size)
         depth = self.changeScale(depth, self.size,Image.NEAREST)
+        labels = self.changeScale(labels, self.size,Image.NEAREST)
  
         return {'image': image, 'depth': depth, 'labels': labels}
 
@@ -128,6 +129,7 @@ class CenterCrop(object):
 
         image = self.centerCrop(image, self.size_image)
         depth = self.centerCrop(depth, self.size_image)
+        labels = self.centerCrop(labels, self.size_image)
 
         ow, oh = self.size_depth
         depth = depth.resize((ow, oh))
@@ -169,9 +171,10 @@ class ToTensor(object):
         """
         # ground truth depth of training samples is stored in 8-bit while test samples are saved in 16 bit
         image = self.to_tensor(image)
+        labels = self.to_tensor(labels)
         if self.is_test:
             depth = self.to_tensor(depth).float()/1000
-        else:            
+        else:
             depth = self.to_tensor(depth).float()*10
         return {'image': image, 'depth': depth, 'labels': labels}
 
@@ -223,7 +226,7 @@ class Lighting(object):
         self.eigvec = eigvec
 
     def __call__(self, sample):
-        image, depth, labels = sample['image'], sample['depth'], image['labels']
+        image, depth, labels = sample['image'], sample['depth'], sample['labels']
         if self.alphastd == 0:
             return image
 
@@ -351,9 +354,6 @@ class Normalize(object):
 
 class CombineWithLabel(object):
     def __call__(self, sample):
-        print("AAAAAAAAAAAAAAAAAAA")
         image, depth, labels = sample['image'], sample['depth'], sample['labels']
-        print(labels[0][0])
-        image = np.concatenate((image, labels), axis=2)
-        print(image.shape)
+        image = torch.cat((image, labels), dim=0)
         return {'image': image, 'depth': depth, 'labels': labels}

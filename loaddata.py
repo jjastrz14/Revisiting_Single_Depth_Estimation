@@ -8,16 +8,22 @@ from nyu_transform import *
 
 
 class depthDataset(Dataset):
+    
     """Face Landmarks dataset."""
 
     def __init__(self, npz_file, transform=None):
-        self.frame = np.load(npz_file)
+        self.frame = npz_file
+        file = np.load(self.frame, mmap_mode='r')
+        self.len = len(file['images'])
+        file.close()
         self.transform = transform
 
     def __getitem__(self, idx):
-        image = self.frame['images'][idx]
-        depth = self.frame['depth'][idx]
-        labels = self.frame['labels'][idx]
+        file = np.load(self.frame, mmap_mode='r')
+        image = Image.fromarray(file['images'][idx])
+        depth = Image.fromarray(file['depths'][idx])
+        labels = Image.fromarray(file['labels'][idx])
+        file.close()
 
         sample = {'image': image, 'depth': depth, 'labels': labels}
 
@@ -27,7 +33,7 @@ class depthDataset(Dataset):
         return sample
 
     def __len__(self):
-        return len(self.frame['images'])
+        return self.len
 
 
 def getTrainingData(batch_size=64):
@@ -48,7 +54,6 @@ def getTrainingData(batch_size=64):
                                             RandomHorizontalFlip(),
                                             RandomRotate(5),
                                             CenterCrop([304, 228], [152, 114]),
-                                            CombineWithLabel(),
                                             ToTensor(),
                                             Lighting(0.1, __imagenet_pca[
                                                 'eigval'], __imagenet_pca['eigvec']),
@@ -58,9 +63,11 @@ def getTrainingData(batch_size=64):
                                                 saturation=0.4,
                                             ),
                                             Normalize(__imagenet_stats['mean'],
-                                                      __imagenet_stats['std'])
+                                                      __imagenet_stats['std']),
+                                            CombineWithLabel(),
                                         ]))
-    print(transformed_training.__len__())
+    
+    len(transformed_training.__getitem__(0))
 
     dataloader_training = DataLoader(transformed_training, batch_size,
                                      shuffle=True, num_workers=4, pin_memory=False)
@@ -77,10 +84,10 @@ def getTestingData(batch_size=64):
                                        transform=transforms.Compose([
                                             Scale(240),
                                             CenterCrop([304, 228], [304, 228]),
-                                            CombineWithLabel(),
                                             ToTensor(is_test=True),
                                             Normalize(__imagenet_stats['mean'],
-                                                    __imagenet_stats['std'])
+                                                    __imagenet_stats['std']),
+                                            CombineWithLabel(),
                                        ]))
 
     dataloader_testing = DataLoader(transformed_testing, batch_size,
