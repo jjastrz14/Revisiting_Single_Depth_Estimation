@@ -87,13 +87,12 @@ class Scale(object):
         self.size = size
 
     def __call__(self, sample):
-        image, depth, labels = sample['image'], sample['depth'], sample['labels']
+        image, depth = sample['image'], sample['depth']
 
         image = self.changeScale(image, self.size)
         depth = self.changeScale(depth, self.size,Image.NEAREST)
-        labels = self.changeScale(labels, self.size,Image.NEAREST)
  
-        return {'image': image, 'depth': depth, 'labels': labels}
+        return {'image': image, 'depth': depth}
 
     def changeScale(self, img, size, interpolation=Image.BILINEAR):
 
@@ -125,16 +124,15 @@ class CenterCrop(object):
         self.size_depth = size_depth
 
     def __call__(self, sample):
-        image, depth, labels = sample['image'], sample['depth'], sample['labels']
+        image, depth = sample['image'], sample['depth']
 
         image = self.centerCrop(image, self.size_image)
         depth = self.centerCrop(depth, self.size_image)
-        labels = self.centerCrop(labels, self.size_image)
 
         ow, oh = self.size_depth
         depth = depth.resize((ow, oh))
 
-        return {'image': image, 'depth': depth, 'labels': labels}
+        return {'image': image, 'depth': depth}
 
     def centerCrop(self, image, size):
 
@@ -162,7 +160,7 @@ class ToTensor(object):
         self.is_test = is_test
 
     def __call__(self, sample):
-        image, depth, labels = sample['image'], sample['depth'], sample['labels']
+        image, depth = sample['image'], sample['depth']
         """
         Args:
             pic (PIL.Image or numpy.ndarray): Image to be converted to tensor.
@@ -171,12 +169,11 @@ class ToTensor(object):
         """
         # ground truth depth of training samples is stored in 8-bit while test samples are saved in 16 bit
         image = self.to_tensor(image)
-        labels = self.to_tensor(labels)
         if self.is_test:
             depth = self.to_tensor(depth).float()/1000
         else:
             depth = self.to_tensor(depth).float()*10
-        return {'image': image, 'depth': depth, 'labels': labels}
+        return {'image': image, 'depth': depth}
 
     def to_tensor(self, pic):
         if not(_is_pil_image(pic) or _is_numpy_image(pic)):
@@ -226,7 +223,7 @@ class Lighting(object):
         self.eigvec = eigvec
 
     def __call__(self, sample):
-        image, depth, labels = sample['image'], sample['depth'], sample['labels']
+        image, depth = sample['image'], sample['depth']
         if self.alphastd == 0:
             return image
 
@@ -238,7 +235,7 @@ class Lighting(object):
 
         image = image.add(rgb.view(3, 1, 1).expand_as(image))
 
-        return {'image': image, 'depth': depth, 'labels': labels}
+        return {'image': image, 'depth': depth}
 
 
 class Grayscale(object):
@@ -294,15 +291,15 @@ class RandomOrder(object):
         self.transforms = transforms
 
     def __call__(self, sample):
-        image, depth, labels = sample['image'], sample['depth'], sample['labels']
+        image, depth = sample['image'], sample['depth']
 
         if self.transforms is None:
-            return {'image': image, 'depth': depth, 'labels': labels}
+            return {'image': image, 'depth': depth}
         order = torch.randperm(len(self.transforms))
         for i in order:
             image = self.transforms[i](image)
 
-        return {'image': image, 'depth': depth, 'labels': labels}
+        return {'image': image, 'depth': depth}
 
 
 class ColorJitter(RandomOrder):
@@ -329,11 +326,11 @@ class Normalize(object):
         Returns:
             Tensor: Normalized image.
         """
-        image, depth, labels = sample['image'], sample['depth'], sample['labels']
+        image, depth = sample['image'], sample['depth']
 
         image = self.normalize(image, self.mean, self.std)
 
-        return {'image': image, 'depth': depth, 'labels': labels}
+        return {'image': image, 'depth': depth}
 
     def normalize(self, tensor, mean, std):
         """Normalize a tensor image with mean and standard deviation.
@@ -354,6 +351,6 @@ class Normalize(object):
 
 class CombineWithLabel(object):
     def __call__(self, sample):
-        image, depth, labels = sample['image'], sample['depth'], sample['labels']
-        image = torch.cat((image, labels), dim=0)
-        return {'image': image, 'depth': depth, 'labels': labels}
+        image, depth = sample['image'], sample['depth']
+        image = torch.cat((image), dim=0)
+        return {'image': image, 'depth': depth}
