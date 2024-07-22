@@ -104,15 +104,7 @@ class E_senet(nn.Module):
 
     def __init__(self, original_model, num_features = 2048):
         super(E_senet, self).__init__()
-        first_three = list(original_model.children())[:-3]
-        first_step = nn.Sequential(
-            nn.Conv2d(4, 64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False),
-            *(first_three[0][1:])
-        )
-        self.base = nn.Sequential(
-            first_step,
-            *first_three[1:]
-        )
+        self.base = nn.Sequential(*list(original_model.children())[:-3])
 
     def forward(self, x):
         x = self.base[0](x)

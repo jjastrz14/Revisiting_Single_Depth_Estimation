@@ -64,7 +64,6 @@ def getTrainingData(batch_size=64):
                                             ),
                                             Normalize(__imagenet_stats['mean'],
                                                       __imagenet_stats['std']),
-                                            CombineWithLabel(),
                                         ]))
     
     len(transformed_training.__getitem__(0))
@@ -87,7 +86,6 @@ def getTestingData(batch_size=64):
                                             ToTensor(is_test=True),
                                             Normalize(__imagenet_stats['mean'],
                                                     __imagenet_stats['std']),
-                                            CombineWithLabel(),
                                        ]))
 
     dataloader_testing = DataLoader(transformed_testing, batch_size,
