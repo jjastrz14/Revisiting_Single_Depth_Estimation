@@ -41,5 +41,6 @@ def readNyu2(filename):
                     ))
 
     image = DataLoader(image_trans, batch_size=1, shuffle=False, num_workers=0, pin_memory=False)
-
+    # JAJ here should be fine but this is an enumerable
+    
     return image
