@@ -47,26 +47,28 @@ def main():
     model.eval()
 
     semantic_weights = FCN_ResNet50_Weights.DEFAULT
-    semantic_model = fcn_resnet50(weights=semantic_weights)
+    semantic_model = fcn_resnet50(weights=semantic_weights).cuda()
     semantic_preprocessor = semantic_weights.transforms()
     print("Classes", semantic_weights.meta["categories"])
 
     nyu2_loader = loaddata.readNyu2(args.input)
 
-    test(nyu2_loader, model, semantic_model, semantic_preprocessor=semantic_preprocessor, output_path=args.output_path)
+    test(nyu2_loader, model, semantic_model, semantic_preprocessor=semantic_preprocessor, output_path=args.output_path, categories=semantic_weights.meta["categories"])
 
 
-def test(nyu2_loader, model, semantic_model, semantic_preprocessor=None, output_path='data/demo/'):
+def test(nyu2_loader, model, semantic_model, semantic_preprocessor=None, output_path='data/demo/', categories=None):
     for i, image in enumerate(nyu2_loader):
+        semantic_input = image
         with torch.no_grad():
             if semantic_preprocessor != None:
-                semantic_preprocessed_image = semantic_preprocessor(image)
+                semantic_input = semantic_preprocessor(semantic_input)
+            semantic_input = semantic_input.cuda()
             out = model(image)
-            semantic_prediction = semantic_model(semantic_preprocessed_image)['out']
+            semantic_prediction = semantic_model(semantic_input)['out']
             semantic_out = semantic_prediction.softmax(dim=1)
-
         matplotlib.image.imsave(os.path.join(output_path, "depth.png"), out.view(out.size(2),out.size(3)).data.cpu().numpy())
-        matplotlib.image.imsave(os.path.join(output_path, "semantic.png"), semantic_out.view(semantic_out.size(2),semantic_out.size(3)).data.cpu().numpy())
+        for i in range(semantic_out.size(1)):
+            matplotlib.image.imsave(os.path.join(output_path, "semantic_{}.png".format(i if categories == None else categories[i])), semantic_out[0][i]).data.cpu().numpy()
 
 if __name__ == '__main__':
     main()
