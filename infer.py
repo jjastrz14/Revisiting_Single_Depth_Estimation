@@ -12,6 +12,8 @@ import numpy as np
 import loaddata_demo as loaddata
 import pdb
 
+from PIL import Image
+
 import matplotlib.image
 import matplotlib.pyplot as plt
 plt.set_cmap("jet")
@@ -66,9 +68,15 @@ def test(nyu2_loader, model, semantic_model, semantic_preprocessor=None, output_
             out = model(image)
             semantic_prediction = semantic_model(semantic_input)['out']
             semantic_out = semantic_prediction.softmax(dim=1)
-        matplotlib.image.imsave(os.path.join(output_path, "depth.png"), out.view(out.size(2),out.size(3)).data.cpu().numpy())
+
+        depth = Image.fromarray(out.view(out.size(2),out.size(3)).data.cpu().numpy())
+        depth = depth.resize((image.size(3), image.size(2)))
+        matplotlib.image.imsave(os.path.join(output_path, "depth.png"), depth)
+
         for i in range(semantic_out.size(1)):
-            matplotlib.image.imsave(os.path.join(output_path, "semantic_{}.png".format(i if categories == None else categories[i])), semantic_out[0][i]).data.cpu().numpy()
+            semantic = Image.fromarray(semantic_out[0][i].data.cpu().numpy())
+            semantic = semantic.resize((image.size(3), image.size(2)))
+            matplotlib.image.imsave(os.path.join(output_path, "semantic_{}.png".format(i if categories == None else categories[i])), semantic)
 
 if __name__ == '__main__':
     main()
