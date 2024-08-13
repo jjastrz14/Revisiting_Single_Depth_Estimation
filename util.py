@@ -3,6 +3,7 @@
 import torch
 import math
 import numpy as np
+import os
 
 def lg10(x):
     return torch.div(torch.log(x), math.log(10))
@@ -107,8 +108,7 @@ def averageErrors(errorSum, N):
 
     return averageError
 
-
-
-
-
-	
+def get_filename_without_extension(file_path):
+    filename_with_extension = os.path.basename(file_path)
+    filename_without_extension, _ = os.path.splitext(filename_with_extension)
+    return filename_without_extension

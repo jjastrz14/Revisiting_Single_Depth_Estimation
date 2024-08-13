@@ -3,38 +3,35 @@ import argparse
 import torch
 import torch.nn.parallel
 
-from torchvision.io.image import read_image
 from torchvision.models.segmentation import fcn_resnet50, FCN_ResNet50_Weights
-from torchvision.transforms.functional import to_pil_image
 
-from models import modules, net, resnet, densenet, senet
-import numpy as np
 import loaddata
-import pdb
 
-from PIL import Image
+from PIL import Image, ImageColor
+
+import pandas as pd
 
 import matplotlib.image
 import matplotlib.pyplot as plt
+
+from configs import *
+from util import get_filename_without_extension
+
 plt.set_cmap("jet")
-   
 
 def main():
     parser=argparse.ArgumentParser()
 
-    parser.add_argument("--input_path", help="Input csv")
+    parser.add_argument("--input", help="Input csv")
     parser.add_argument("--output_path", help="Output")
 
     args=parser.parse_args()
 
     if torch.cuda.device_count() == 8:
-        model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3, 4, 5, 6, 7]).cuda()
         batch_size = 64
     elif torch.cuda.device_count() == 4:
-        model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3]).cuda()
         batch_size = 32
     else:
-        model = model.cuda()
         batch_size = 4
 
     semantic_weights = FCN_ResNet50_Weights.DEFAULT
@@ -42,13 +39,15 @@ def main():
     semantic_preprocessor = semantic_weights.transforms()
     print("Classes", semantic_weights.meta["categories"])
 
+    input_csv = args.input
     dataset_loader = loaddata.getTrainingData(args.input, batch_size)
 
-    convert(dataset_loader, semantic_model, semantic_preprocessor=semantic_preprocessor, output_path=args.output_path, categories=semantic_weights.meta["categories"])
+    convert(input_csv, dataset_loader, semantic_model, semantic_preprocessor=semantic_preprocessor, output_path=args.output_path, categories=semantic_weights.meta["categories"])
 
-
-def convert(dataset_loader, semantic_model, semantic_preprocessor=None, output_path='data/demo/', categories=None):
+def convert(input_csv, dataset_loader, semantic_model, semantic_preprocessor=None, output_path='data/demo/', categories=None):
+    csv_content = pd.read_csv(input_csv)
     for i, sample_batched in enumerate(dataset_loader):
+        base_name = get_filename_without_extension(csv_content.iloc[i, 0]).split('_')[0]
         image = sample_batched['image']
         semantic_input = image
         with torch.no_grad():
@@ -58,10 +57,24 @@ def convert(dataset_loader, semantic_model, semantic_preprocessor=None, output_p
             semantic_prediction = semantic_model(semantic_input)['out']
             semantic_out = semantic_prediction.softmax(dim=1)
 
-        for i in range(semantic_out.size(1)):
-            semantic = Image.fromarray(semantic_out[0][i].data.cpu().numpy())
-            semantic = semantic.resize((image.size(3), image.size(2)))
-            matplotlib.image.imsave(os.path.join(output_path, "semantic_{}.png".format(i if categories == None else categories[i])), semantic)
+        semantic_out = semantic_out[0, :, :, :]
+        semantic_argmax = semantic_out.argmax(dim=0)
+        semantic_colored = Image.new('RGB', (semantic_argmax.shape[1], semantic_argmax.shape[0]))
+        classes_color_code_values = list(classes_color_code.values())
+        print(semantic_argmax.shape)
+        print(semantic_colored.size)
+
+        for i in range(len(classes_color_code_values)):
+            class_mask = (semantic_argmax == i)
+            print(class_mask.shape)
+            color = ImageColor.getrgb(classes_color_code_values[i])
+            for j in range(semantic_colored.size[0]):
+                for k in range(semantic_colored.size[1]):
+                    if class_mask[k, j]:
+                        semantic_colored.putpixel((j, k), color)
+        
+        matplotlib.image.imsave(os.path.join(output_path, "{}_semantic.png".format(base_name)), semantic_colored)
+        return
 
 if __name__ == '__main__':
     main()

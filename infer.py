@@ -33,7 +33,6 @@ def define_model(is_resnet, is_densenet, is_senet):
         model = net.model(Encoder, num_features=2048, block_channel = [256, 512, 1024, 2048])
 
     return model
-   
 
 def main():
     parser=argparse.ArgumentParser()
@@ -56,7 +55,6 @@ def main():
     nyu2_loader = loaddata.readNyu2(args.input)
 
     test(nyu2_loader, model, semantic_model, semantic_preprocessor=semantic_preprocessor, output_path=args.output_path, categories=semantic_weights.meta["categories"])
-
 
 def test(nyu2_loader, model, semantic_model, semantic_preprocessor=None, output_path='data/demo/', categories=None):
     for i, image in enumerate(nyu2_loader):
