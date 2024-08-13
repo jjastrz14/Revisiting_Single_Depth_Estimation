@@ -8,20 +8,24 @@ from nyu_transform import *
 
 
 class depthDataset(Dataset):
+    
     """Face Landmarks dataset."""
 
-    def __init__(self, csv_file, transform=None):
-        self.frame = pd.read_csv(csv_file, header=None)
+    def __init__(self, npz_file, transform=None):
+        self.frame = npz_file
+        file = np.load(self.frame, mmap_mode='r')
+        self.len = len(file['images'])
+        file.close()
         self.transform = transform
 
     def __getitem__(self, idx):
-        image_name = self.frame.ix[idx, 0]
-        depth_name = self.frame.ix[idx, 1]
+        file = np.load(self.frame, mmap_mode='r')
+        image = Image.fromarray(file['images'][idx])
+        depth = Image.fromarray(file['depths'][idx])
+        labels = Image.fromarray(file['labels'][idx])
+        file.close()
 
-        image = Image.open(image_name)
-        depth = Image.open(depth_name)
-
-        sample = {'image': image, 'depth': depth}
+        sample = {'image': image, 'depth': depth, 'labels': labels}
 
         if self.transform:
             sample = self.transform(sample)
@@ -29,10 +33,10 @@ class depthDataset(Dataset):
         return sample
 
     def __len__(self):
-        return len(self.frame)
+        return self.len
 
 
-def getTrainingData(input='./data/nyu2_train.csv', batch_size=64):
+def getTrainingData(batch_size=64):
     __imagenet_pca = {
         'eigval': torch.Tensor([0.2175, 0.0188, 0.0045]),
         'eigvec': torch.Tensor([
@@ -44,7 +48,7 @@ def getTrainingData(input='./data/nyu2_train.csv', batch_size=64):
     __imagenet_stats = {'mean': [0.485, 0.456, 0.406],
                         'std': [0.229, 0.224, 0.225]}
 
-    transformed_training = depthDataset(csv_file=input,
+    transformed_training = depthDataset(npz_file='./data/nyu_depth_v2_labeled.npz',
                                         transform=transforms.Compose([
                                             Scale(240),
                                             RandomHorizontalFlip(),
@@ -59,8 +63,11 @@ def getTrainingData(input='./data/nyu2_train.csv', batch_size=64):
                                                 saturation=0.4,
                                             ),
                                             Normalize(__imagenet_stats['mean'],
-                                                      __imagenet_stats['std'])
+                                                      __imagenet_stats['std']),
+                                            CombineWithLabel(),
                                         ]))
+    
+    len(transformed_training.__getitem__(0))
 
     dataloader_training = DataLoader(transformed_training, batch_size,
                                      shuffle=True, num_workers=4, pin_memory=False)
@@ -75,11 +82,12 @@ def getTestingData(batch_size=64):
     # scale = random.uniform(1, 1.5)
     transformed_testing = depthDataset(csv_file='./data/nyu2_test.csv',
                                        transform=transforms.Compose([
-                                           Scale(240),
-                                           CenterCrop([304, 228], [304, 228]),
-                                           ToTensor(is_test=True),
-                                           Normalize(__imagenet_stats['mean'],
-                                                     __imagenet_stats['std'])
+                                            Scale(240),
+                                            CenterCrop([304, 228], [304, 228]),
+                                            ToTensor(is_test=True),
+                                            Normalize(__imagenet_stats['mean'],
+                                                    __imagenet_stats['std']),
+                                            CombineWithLabel(),
                                        ]))
 
     dataloader_testing = DataLoader(transformed_testing, batch_size,
