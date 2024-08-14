@@ -58,9 +58,31 @@ def main():
     test(nyu2_loader, model, semantic_model, semantic_preprocessor=semantic_preprocessor, output_path=args.output_path, categories=semantic_weights.meta["categories"])
 
 
-def test(nyu2_loader, model, semantic_model, semantic_preprocessor=None, output_path='data/demo/', categories=None):
+def test(nyu2_loader, model, semantic_model, semantic_preprocessor=None, output_path='./data/demo/', categories=None):
     for i, image in enumerate(nyu2_loader):
+        print(f"Original image size: {image.size()}")
+        print(f"image size: {image.size(2), image.size(3)}")
+        image_preprocessed = image
+        if image_preprocessed.dim() == 4:
+          image_preprocessed = image_preprocessed.squeeze(0)
+        print(f"After squeeze: {image.size()}")
+        if image_preprocessed.size(0) != 3:
+          image_preprocessed = image_preprocessed.permute(2,0,1)
+        print(f"After permute: {image.size()}")
+
+        image_preprocessed = image_preprocessed.data.cpu().numpy().transpose(1, 2, 0)
+        # Normalize to 0-255 range
+        image_preprocessed = (image_preprocessed - image_preprocessed.min()) / (image_preprocessed.max() - image_preprocessed.min()) * 255
+        image_preprocessed = image_preprocessed.astype(np.uint8)
+        preprocessed_rgb = Image.fromarray(image_preprocessed, 'RGB')
+        print(f"Preprocessed image size: {preprocessed_rgb.size}")
+        
+        matplotlib.image.imsave(os.path.join(output_path, "preprocessed_image.png"), image_preprocessed)
         # JAJ here is the input size for sure
+        #squezzed =  image.squeeze(0).permute(1, 2, 0).cpu().numpy()
+        #preprocessed = Image.fromarray(squezzed)
+        #matplotlib.image.imsave(os.path.join(output_path, "rbg_preprocessed.png"), preprocessed)
+
         semantic_input = image
         with torch.no_grad():
             if semantic_preprocessor != None:
@@ -69,14 +91,20 @@ def test(nyu2_loader, model, semantic_model, semantic_preprocessor=None, output_
             out = model(image)
             semantic_prediction = semantic_model(semantic_input)['out']
             semantic_out = semantic_prediction.softmax(dim=1)
-        # depth = Image.fromarray(out.view(out.size(2),out.size(3)).data.cpu().numpy())
-        # depth.resize(image.size())
+
+        print(f"output size: {out.size()}")
+        print(f"output size: {out.size(2), out.size(3)}")
+        depth = Image.fromarray(out.view(out.size(2),out.size(3)).data.cpu().numpy())
+        depth = depth.resize((image.size(3), image.size(2)))
+
+        print(f"output resize: {depth.size}")
         
-        matplotlib.image.imsave(os.path.join(output_path, "depth.png"), out.view(out.size(2),out.size(3)).data.cpu().numpy())
+        matplotlib.image.imsave(os.path.join(output_path, "depth.png"), depth)
+
         for i in range(semantic_out.size(1)):
-            # semantic = Image.fromarray(semantic_out[0][i].data.cpu().numpy())
-            # semantic = semantic.resize(image.size())
-            matplotlib.image.imsave(os.path.join(output_path, "semantic_{}.png".format(i if categories == None else categories[i])), semantic_out[0][i].data.cpu().numpy())
+            semantic = Image.fromarray(semantic_out[0][i].data.cpu().numpy())
+            semantic = semantic.resize((image.size(3),image.size(2)))
+            matplotlib.image.imsave(os.path.join(output_path, "semantic_{}.png".format(i if categories == None else categories[i])), semantic)
 
 if __name__ == '__main__':
     main()
