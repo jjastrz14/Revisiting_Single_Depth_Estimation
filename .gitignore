@@ -3,3 +3,9 @@ data
 
 **/*/__pycache__/
 __pycache__/
+person_pointcloud.ply
+rgb_pointcloud.ply
+tv_pointcloud.ply
+rgb_pointcloud.ply
+rgb_pointcloud.ply
+rgb_pointcloud.ply
