@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
-from nyu_transform import CombineWithLabel
 from torchvision import transforms, utils
 from PIL import Image
 import random
@@ -39,10 +38,9 @@ def readNyu2(filename):
                         Normalize(__imagenet_stats['mean'],
                                     __imagenet_stats['std'])
                         ],
-                        CombineWithLabel(),
                     ))
 
     image = DataLoader(image_trans, batch_size=1, shuffle=False, num_workers=0, pin_memory=False)
-
-
+    # JAJ here should be fine but this is an enumerable
+    
     return image

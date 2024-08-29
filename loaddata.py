@@ -59,7 +59,7 @@ def getTrainingData(input='./data/nyu2_train.csv', batch_size=64):
                                                 saturation=0.4,
                                             ),
                                             Normalize(__imagenet_stats['mean'],
-                                                      __imagenet_stats['std'])
+                                                      __imagenet_stats['std']),
                                         ]))
 
     dataloader_training = DataLoader(transformed_training, batch_size,
@@ -75,11 +75,11 @@ def getTestingData(batch_size=64):
     # scale = random.uniform(1, 1.5)
     transformed_testing = depthDataset(csv_file='./data/nyu2_test.csv',
                                        transform=transforms.Compose([
-                                           Scale(240),
-                                           CenterCrop([304, 228], [304, 228]),
-                                           ToTensor(is_test=True),
-                                           Normalize(__imagenet_stats['mean'],
-                                                     __imagenet_stats['std'])
+                                            Scale(240),
+                                            CenterCrop([304, 228], [304, 228]),
+                                            ToTensor(is_test=True),
+                                            Normalize(__imagenet_stats['mean'],
+                                                    __imagenet_stats['std']),
                                        ]))
 
     dataloader_testing = DataLoader(transformed_testing, batch_size,
