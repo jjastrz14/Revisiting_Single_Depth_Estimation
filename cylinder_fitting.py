@@ -150,7 +150,9 @@ def T_Linkage(pointcloud, model = 'plane'):
             choose = np.random.randint(0, pointcloud.shape[0], 2)
             pc = pointcloud[choose]
             pc = np.vstack((pc, np.zeros(3).reshape((1,3))))
-            m, dist = fit_plane(pc, pointcloud)
+            flag, m, dist = fit_plane(pc, pointcloud)
+            if flag == False: 
+                continue
             dist = np.array(dist)
             #print(dist)
             
@@ -212,7 +214,7 @@ def T_Linkage(pointcloud, model = 'plane'):
 
         if model == 'plane':
             refit = np.vstack((refit, np.zeros(3).reshape((1,3))))
-            best_model, res = fit_plane(refit, pointcloud)
+            flag, best_model, res = fit_plane(refit, pointcloud)
         elif model == 'circle':
             best_model, res = fit_circle(refit, pointcloud)
         
@@ -305,26 +307,45 @@ def fit_circle(points, data):
     return [xc, yc, r], dists # , cons, inl
 
 
-def fit_plane(toBeFitted, data):
+def fit_plane(toBeFitted, data, threshold=0.01):
+    """
+    Fit a plane to the given points and calculate inliers from the data.
+    
+    Args:
+    toBeFitted (np.ndarray): Points to fit the plane to.
+    data (np.ndarray): Data points to check for inliers.
+    threshold (float): Distance threshold for inliers. Default is 0.01.
+    
+    Returns:
+    Tuple[bool, np.ndarray | None, List[float]]: 
+        - Boolean indicating success or failure
+        - Normal vector of the plane (or None if fitting failed)
+        - List of distances from each data point to the plane
+    """
     points = Points(toBeFitted)
-    plane = Plane.best_fit(points)
-
-    n = plane.normal
-    n = n/np.linalg.norm(n)
-
-
-    inl = []
+    n = None
     dists = []
-    for d in data:
-        dist = np.abs(np.dot(n, (d)))/np.linalg.norm(n)
+    
+    try:
+        plane = Plane.best_fit(points)
+        n = plane.normal
+        n = n / np.linalg.norm(n)
         
-        dists.append(dist)
-        if dist < 0.01:
-            inl.append(d)
+        for d in data:
+            dist = np.abs(np.dot(n, d)) / np.linalg.norm(n)
+            dists.append(dist)
+        
+        #inliers = [d for d in data if np.abs(np.dot(n, d)) / np.linalg.norm(n) < threshold]
+        #inlier_count = len(inliers)
+        
+        #print(f"Successfully fitted plane. Inlier count: {inlier_count}")
+        return True, n, dists
+    
+    except ValueError as e:
+        print(f"Error processing point cloud: {str(e)}")
+        return False, None, []
+        
 
-    cons = len(inl)
-
-    return n, dists
 
 
 def create_cylinder_point_cloud(radius=2.0, height=8.0, num_points=1000):

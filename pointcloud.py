@@ -300,7 +300,7 @@ def adaptive_clustering(pcd: o3d.geometry.PointCloud,
             cluster_points = points[labels == label]
             
             # Add noise to the cluster points to make them non-colinear preserving the structure of pointcloud
-            noisy_cluster_points = add_noise(cluster_points, 0.01)
+            noisy_cluster_points = add_noise(cluster_points, 0.05)
             
             sub_pcd = o3d.geometry.PointCloud()
             sub_pcd.points = o3d.utility.Vector3dVector(cluster_points)
