@@ -3,3 +3,9 @@ data
 
 **/*/__pycache__/
 __pycache__/
+person_pointcloud.ply
+tv_pointcloud.ply
+pointclouds/complex/complex_0000.ply
+pointclouds/complex/complex_0001.ply
+pointclouds/linear/linear_0000.ply
+pointclouds/linear/linear_0001.ply
