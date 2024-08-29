@@ -3,6 +3,13 @@ from PIL import Image
 import matplotlib.image
 import matplotlib.pyplot as plt
 import open3d as o3d
+from sklearn.cluster import OPTICS, DBSCAN
+from sklearn.decomposition import PCA
+from sklearn.neighbors import NearestNeighbors
+from kneed import KneeLocator
+from typing import List, Tuple
+import colorsys
+import os 
 
 ############## PLAN ##################
 '''
@@ -20,9 +27,6 @@ ALSO: collect everything in one repo to have infer + pointcloud creation + Andre
 
 '''
 
-import numpy as np
-import open3d as o3d
-from PIL import Image
 
 def load_image(file_path):
     """Load an image and convert it to a numpy array."""
@@ -211,6 +215,239 @@ def filter_save_visualize_pointcloud(pcd, mask, center=True, min_points=10):
 
     return result_pcd, diagnostics
 
+
+def estimate_eps(points: np.ndarray, n_neighbors: int = 2) -> float:
+    """
+    Estimate a good eps value for DBSCAN using the knee method.
+
+    Args:
+    points (np.ndarray): The input points.
+    n_neighbors (int): Number of neighbors to consider.
+
+    Returns:
+    float: Estimated eps value.
+    """
+    neigh = NearestNeighbors(n_neighbors=n_neighbors)
+    nbrs = neigh.fit(points)
+    distances, indices = nbrs.kneighbors(points)
+    distances = np.sort(distances, axis=0)
+    distances = distances[:,1]  # Get the distance to the nearest neighbor
+    
+    kneedle = KneeLocator(range(len(distances)), distances, S=1.0, curve="convex", direction="increasing")
+    eps = distances[kneedle.knee]
+    
+    return eps
+
+def generate_distinct_colors(n):
+    """Generate n distinct colors"""
+    HSV_tuples = [(x * 1.0 / n, 0.5, 0.5) for x in range(n)]
+    return [colorsys.hsv_to_rgb(*x) for x in HSV_tuples]
+
+def add_noise(points: np.ndarray, noise_level: float = 0.01) -> np.ndarray:
+    """
+    Add small random noise to the points.
+    
+    Args:
+    points (np.ndarray): Array of shape (n, 3) containing n 3D points.
+    noise_level (float): Standard deviation of the Gaussian noise to be added.
+    
+    Returns:
+    np.ndarray: Array of shape (n, 3) with added noise.
+    """
+    noise = np.random.normal(0, noise_level, points.shape)
+    return points + noise
+
+def adaptive_clustering(pcd: o3d.geometry.PointCloud, 
+                        method: str = 'optics', 
+                        min_samples: int = 10, 
+                        max_eps: float = np.inf) -> List[o3d.geometry.PointCloud]:
+    """
+    Perform adaptive clustering on a point cloud using either OPTICS or DBSCAN with estimated eps.
+
+    Args:
+    pcd (open3d.geometry.PointCloud): The input point cloud.
+    method (str): Clustering method, either 'optics' or 'dbscan'.
+    min_samples (int): The number of samples in a neighborhood for a point to be considered as a core point.
+    max_eps (float): Maximum eps value for OPTICS (only used if method is 'optics').
+
+    Returns:
+    List[open3d.geometry.PointCloud]: A list of sub-point clouds.
+    """
+    points = np.asarray(pcd.points)
+
+    if method == 'optics':
+        clustering = OPTICS(min_samples=min_samples, max_eps=max_eps)
+        labels = clustering.fit_predict(points)
+    elif method == 'dbscan':
+        eps = estimate_eps(points)
+        print(f"Estimated eps: {eps}")
+        clustering = DBSCAN(eps=eps, min_samples=min_samples)
+        labels = clustering.fit_predict(points)
+    else:
+        raise ValueError("Method must be either 'optics' or 'dbscan'")
+
+    # Generate distinct colors for each cluster
+    unique_labels = set(labels)
+    n_clusters = len(unique_labels) - (1 if -1 in unique_labels else 0)  # Exclude noise if present
+    distinct_colors = generate_distinct_colors(n_clusters)
+    color_map = {label: color for label, color in zip([l for l in unique_labels if l != -1], distinct_colors)}
+    color_map[-1] = (0.5, 0.5, 0.5)  # Gray color for noise points
+
+    # Split into sub-point clouds
+    sub_point_clouds = []
+    for label in unique_labels:
+        if label != -1:  # Ignore noise points
+            cluster_points = points[labels == label]
+            
+            # Add noise to the cluster points to make them non-colinear preserving the structure of pointcloud
+            noisy_cluster_points = add_noise(cluster_points, 0.01)
+            
+            sub_pcd = o3d.geometry.PointCloud()
+            sub_pcd.points = o3d.utility.Vector3dVector(cluster_points)
+            
+            # Assign color to the cluster
+            cluster_color = np.array([color_map[label]] * len(cluster_points))
+            sub_pcd.colors = o3d.utility.Vector3dVector(cluster_color)
+            
+            sub_point_clouds.append(sub_pcd)
+
+    return sub_point_clouds
+
+def analyze_point_cloud_geometry(pcd: o3d.geometry.PointCloud) -> dict:
+    """
+    Analyze the geometry of a point cloud using PCA.
+    
+    Args:
+    pcd (open3d.geometry.PointCloud): The input point cloud.
+    
+    Returns:
+    dict: A dictionary containing geometric properties of the point cloud.
+    """
+    points = np.asarray(pcd.points)
+    pca = PCA(n_components=3)
+    pca.fit(points)
+    
+    eigenvalues = pca.explained_variance_
+    total_variance = np.sum(eigenvalues)
+    
+    # Calculate various geometric properties
+    linearity = (eigenvalues[0] - eigenvalues[1]) / total_variance
+    planarity = (eigenvalues[1] - eigenvalues[2]) / total_variance
+    scattering = eigenvalues[2] / total_variance
+    
+    return {
+        "linearity": linearity,
+        "planarity": planarity,
+        "scattering": scattering,
+        "num_points": len(points)
+    }
+
+def classify_point_cloud(geometry: dict, 
+                         planarity_threshold: float = 0.6, 
+                         linearity_threshold: float = 0.6,
+                         min_points: int = 10) -> str:
+    """
+    Classify a point cloud based on its geometric properties.
+    
+    Args:
+    geometry (dict): Dictionary of geometric properties.
+    planarity_threshold (float): Threshold for planarity.
+    linearity_threshold (float): Threshold for linearity.
+    min_points (int): Minimum number of points to consider.
+    
+    Returns:
+    str: Classification of the point cloud.
+    """
+    if geometry['num_points'] < min_points:
+        return "too_small"
+    elif geometry['planarity'] > planarity_threshold:
+        return "planar"
+    elif geometry['linearity'] > linearity_threshold:
+        return "linear"
+    else:
+        return "complex"
+
+def filter_point_clouds(sub_point_clouds: List[o3d.geometry.PointCloud], 
+                        planarity_threshold: float = 0.6,
+                        linearity_threshold: float = 0.6,
+                        min_points: int = 10) -> Tuple[List[o3d.geometry.PointCloud], List[o3d.geometry.PointCloud], List[o3d.geometry.PointCloud], List[o3d.geometry.PointCloud]]:
+    """
+    Filter and classify point clouds based on their geometry.
+    
+    Args:
+    sub_point_clouds (List[open3d.geometry.PointCloud]): List of sub-point clouds.
+    planarity_threshold (float): Threshold for determining planarity.
+    linearity_threshold (float): Threshold for determining linearity.
+    min_points (int): Minimum number of points to consider a sub-point cloud.
+    
+    Returns:
+    Tuple[List[o3d.geometry.PointCloud], List[o3d.geometry.PointCloud], List[o3d.geometry.PointCloud], List[o3d.geometry.PointCloud]]: 
+        Complex, planar, linear, and too small point clouds.
+    """
+    complex_clouds = []
+    planar_clouds = []
+    linear_clouds = []
+    too_small_clouds = []
+    
+    for sub_pcd in sub_point_clouds:
+        geometry = analyze_point_cloud_geometry(sub_pcd)
+        classification = classify_point_cloud(geometry, planarity_threshold, linearity_threshold, min_points)
+        
+        if classification == "complex":
+            complex_clouds.append(sub_pcd)
+        elif classification == "planar":
+            planar_clouds.append(sub_pcd)
+        elif classification == "linear":
+            linear_clouds.append(sub_pcd)
+        else:  # too_small
+            too_small_clouds.append(sub_pcd)
+    
+    return complex_clouds, planar_clouds, linear_clouds, too_small_clouds
+
+
+
+def save_point_clouds(point_clouds: List[o3d.geometry.PointCloud], 
+                      output_dir: str, 
+                      base_name: str = "pointcloud", 
+                      format: str = "ply") -> None:
+    """
+    Save a list of point clouds to individual files.
+
+    Args:
+    point_clouds (List[o3d.geometry.PointCloud]): List of point clouds to save.
+    output_dir (str): Directory to save the point clouds.
+    base_name (str): Base name for the point cloud files.
+    format (str): File format to save the point clouds. Options: "ply", "pcd", "xyz".
+
+    Returns:
+    None
+    """
+    # Ensure the output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Supported formats and their corresponding save functions
+    save_functions = {
+        "ply": o3d.io.write_point_cloud,
+        "pcd": o3d.io.write_point_cloud,
+        "xyz": o3d.io.write_point_cloud
+    }
+
+    if format.lower() not in save_functions:
+        raise ValueError(f"Unsupported format: {format}. Supported formats are: {', '.join(save_functions.keys())}")
+
+    save_func = save_functions[format.lower()]
+
+    for i, pcd in enumerate(point_clouds):
+        filename = f"{base_name}_{i:04d}.{format.lower()}"
+        filepath = os.path.join(output_dir, filename)
+        success = save_func(filepath, pcd)
+        if success:
+            print(f"Saved point cloud to {filepath}")
+        else:
+            print(f"Failed to save point cloud to {filepath}")
+
+
+
 def main(semantic_file_path, output_path):
     # Load images
     rgb_path = "data/preprocessed_image.png"
@@ -245,7 +482,6 @@ def main(semantic_file_path, output_path):
     # Visualize pointcloud
     o3d.visualization.draw_geometries([pcd])
     
-    
     masked_pcd, diagnostics = filter_save_visualize_pointcloud(pcd, mask, center=False)
 
     print("Diagnostics:")
@@ -265,7 +501,33 @@ def main(semantic_file_path, output_path):
     print(f"Filtered point cloud saved to {output_path}")
 
     # Visualize pointcloud
-    o3d.visualization.draw_geometries([masked_pcd])
+    o3d.visualization.draw_geometries([masked_pcd], window_name = "Masked pointcloud")
+    
+    # Preprocess the point cloud using adaptive clustering to generate smaller pointcloudss
+    sub_point_clouds = adaptive_clustering(masked_pcd, method='optics', min_samples=150, max_eps=50)
+    
+    print(f"Number of sub-point clouds: {len(sub_point_clouds)}")
+    
+    #sub_point_clouds is already a list of o3d geometries
+    o3d.visualization.draw_geometries(sub_point_clouds, window_name = "Clusters")
+    
+    # Filter and classify point clouds
+    complex_clouds, planar_clouds, linear_clouds, too_small_clouds = filter_point_clouds(sub_point_clouds)
+    
+    print(f"Number of complex sub-point clouds: {len(complex_clouds)}")
+    print(f"Number of planar sub-point clouds: {len(planar_clouds)}")
+    print(f"Number of linear sub-point clouds: {len(linear_clouds)}")
+    print(f"Number of too small sub-point clouds: {len(too_small_clouds)}")
+    
+    o3d.visualization.draw_geometries(complex_clouds, window_name = "complex clusters")
+    o3d.visualization.draw_geometries(linear_clouds, window_name = "linear clusters")
+    
+    output_directory = "./pointclouds/"
+    # If you have classified point clouds, you might want to save them separately:
+    save_point_clouds(complex_clouds, os.path.join(output_directory, "complex"), base_name="complex", format="ply")
+    save_point_clouds(planar_clouds, os.path.join(output_directory, "planar"), base_name="planar", format="ply")
+    save_point_clouds(linear_clouds, os.path.join(output_directory, "linear"), base_name="linear", format="ply")
+
 
 if __name__ == "__main__":
     import sys

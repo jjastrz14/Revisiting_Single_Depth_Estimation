@@ -5,6 +5,8 @@ import cv2
 import sys
 from sklearn.decomposition import PCA
 from circle_fit import taubinSVD
+from typing import List, Union
+import os
 
 from cylinder_fitting import create_cylinder_point_cloud, create_cylinder_point_cloud_with_seed, T_Linkage, transform_circle_to_3d, transform_cylinder_to_3d
 
@@ -95,7 +97,8 @@ def visualize_point_clouds(*point_clouds, window_name="Point Clouds Visualizatio
     vis.run()
     vis.destroy_window()
 
-def main(file_path):
+def test(file_path):
+    print(f"Running test function on {file_path}")
     # Load point cloud from .ply file
     pcd = load_point_cloud(file_path)
     if pcd is None:
@@ -219,10 +222,151 @@ def main(file_path):
     obtained_cyl = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(obtained_cyl.astype('float64'))).paint_uniform_color([1,0,0])
     print(f'obtained cylinder: center: {center}, radius {best_cir[2]}, normal of plane: {plane}')
     o3d.visualization.draw_geometries([pcd, obtained_cyl], window_name = "Obtained Cylinder")    
+    
+
+def main(file_paths: Union[str, List[str]]):
+    """
+    Load point clouds, fit cylinders, and visualize results.
+
+    Args:
+    file_paths (Union[str, List[str]]): Either a single file path or a list of file paths to .ply files.
+    """
+    
+    if isinstance(file_paths, str):
+        file_paths = [file_paths]  # Convert single path to list
+        
+    print(f"Processing {len(file_paths)} point cloud(s)")
+    
+    all_point_clouds = []
+    all_fitted_cylinders = []
+
+    for file_path in file_paths:
+                # Load point cloud from .ply file
+        pcd = load_point_cloud(file_path)
+        if pcd is None:
+            print("Failed to load point cloud. Exiting.")
+            return
+
+        pcd = prepare_point_cloud(pcd)
+        if pcd is None:
+            print("Failed to prepare point cloud. Exiting.")
+            return
+        
+        #collect pointclouds
+        all_point_clouds.append(pcd)
+
+        # save the points and normal into np array
+        pcyl = np.asarray(pcd.points)
+        normals = np.asarray(pcd.normals)
+        print('normals', normals.shape)
+
+        plane = T_Linkage(normals)
+        plane = plane[:3]
+        vet_to_plane = np.zeros(3)
+
+        # The plane founded represent the orientation of the cylinder in the space. We can now project all points on this plane
+
+        n = plane
+        n = n / np.linalg.norm(n)
+        proj = []
+        for p in pcyl:
+            dis = p.dot(n)
+            proj.append(p - dis * n)
+        proj_points = np.array(proj) 
+
+
+        u = np.array([1, 0, -plane[0] / plane[2]])
+        u = u / np.linalg.norm(u)
+        v = np.cross(plane, u)
+
+        # change the base of the representation: from the 3D, we want to trasform points into the 2D plane founded above.
+        # This to ensure an isometry tha can lead as to compute the circle fitting in a 2D setting, leaving the dimension unchanged
+        # then create a orthonormal base [u, v, n], with n the norml of the plane 
+
+        base = np.array([u,v,plane]).T
+
+        boh = proj_points @ base
+
+        p_projected = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(boh.astype('float64'))).paint_uniform_color([0,0,1])
+
+        p_points = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(proj_points.astype('float64'))).paint_uniform_color([0,1,0])
+        proj_points = boh
+
+        a, b, c = plane
+
+        # find the circle
+
+        best_cir = T_Linkage(proj_points, model='circle')
+
+        theta = np.linspace(0, 2 * np.pi, 100)
+        circle_points_2d = np.array([best_cir[0] + best_cir[2] * np.cos(theta), best_cir[1] + best_cir[2] * np.sin(theta)]).T
+        #print('circle_points_2d', circle_points_2d.shape)
+        #print(np.zeros(circle_points_2d.shape[0]).shape)
+        circle_points_2d = np.hstack([circle_points_2d, np.zeros(circle_points_2d.shape[0]).reshape((-1,1))])
+        #print('circle_points_2d', circle_points_2d.shape)
+        circle_points_2d = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(circle_points_2d.astype('float64'))).paint_uniform_color([1,0,0])
+
+        pcir,center = transform_circle_to_3d(best_cir[:2], best_cir[2], vet_to_plane, plane)
+        #print('center', center)
+        pcir = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pcir.astype('float64'))).paint_uniform_color([1,0,0])
+
+        inl_cyl = []
+        i = 0
+        for p in pcyl:
+            dist = np.linalg.norm(np.cross(plane, (p-center)))/np.linalg.norm(plane)
+            if np.abs(dist) < best_cir[2] + 0.1 and dist > best_cir[2] - 0.1:
+                inl_cyl.append(i)
+            i += 1
+        estim = pcyl[inl_cyl]
+
+        p_proj = np.dot(estim, plane)
+
+        z_min = np.min(p_proj)
+        z_max = np.max(p_proj)
+
+        obtained_cyl = transform_cylinder_to_3d(best_cir[:2], best_cir[2], vet_to_plane, plane, z_min, z_max)
+        obtained_cyl = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(obtained_cyl.astype('float64'))).paint_uniform_color([1,0,0])
+        
+        #collect cylinders
+        all_fitted_cylinders.append(obtained_cyl)
+
+        print(f'Fitted cylinder for {file_path}: center: {center}, radius {best_cir[2]}, normal of plane: {plane}')
+
+
+    # Visualize all point clouds and fitted cylinders
+    o3d.visualization.draw_geometries(all_point_clouds + all_fitted_cylinders, window_name="All Point Clouds with Fitted Cylinders")
+
+    # Optionally, you can also visualize each point cloud with its fitted cylinder separately
+    for pcd, cyl in zip(all_point_clouds, all_fitted_cylinders):
+        o3d.visualization.draw_geometries([pcd, cyl], window_name=f"Point Cloud with Fitted Cylinder")
+
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) != 2:
-        print("Usage: python script.py <path_to_ply_file>")
+    if len(sys.argv) < 2:
+        print("Usage:")
+        print("  For test: python script.py --test <path_to_ply_file>")
+        print("  For main: python script.py <path_to_ply_file1> [<path_to_ply_file2> ...]")
         sys.exit(1)
-    main(sys.argv[1])
+
+    if sys.argv[1].lower() == "--test":
+        if len(sys.argv) != 3:
+            print("For test mode, please provide exactly one .ply file path")
+            sys.exit(1)
+        test(sys.argv[2])
+    else:
+        # Check if all provided files exist and have .ply extension
+        ply_files = []
+        for file_path in sys.argv[1:]:
+            if not file_path.lower().endswith('.ply'):
+                print(f"Warning: {file_path} is not a .ply file. Skipping.")
+                continue
+            if not os.path.exists(file_path):
+                print(f"Error: File {file_path} does not exist. Skipping.")
+                continue
+            ply_files.append(file_path)
+
+        if not ply_files:
+            print("No valid .ply files provided.")
+            sys.exit(1)
+
+        main(ply_files)
