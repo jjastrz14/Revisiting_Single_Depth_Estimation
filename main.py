@@ -98,33 +98,34 @@ def visualize_point_clouds(*point_clouds, window_name="Point Clouds Visualizatio
     vis.run()
     vis.destroy_window()
 
-def test(file_path):
-    print(f"Running test function on {file_path}")
-    # Load point cloud from .ply file
-    pcd = load_point_cloud(file_path)
-    if pcd is None:
-        print("Failed to load point cloud. Exiting.")
-        return
+def test(file_path, cylinder):
+    
+    if cylinder: 
+        #cylinder for test
+        cyl = create_cylinder_point_cloud(radius=2.0, height=8.0, num_points=1000)
+        cyl = create_cylinder_point_cloud_with_seed(radius=2.0, height=8.0, num_points=1000, seed = 12345)
+        pcd = cyl
+        
+        pcd.paint_uniform_color([0, 0, 0])
+        pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=1, max_nn=30))
+        o3d.visualization.draw([pcd], title = "Generated Cylinder")
+    
+    else: 
+        print(f"Running test function on {file_path}")
+        
+        # Load point cloud from .ply file
+        pcd = load_point_cloud(file_path)
+        if pcd is None:
+            print("Failed to load point cloud. Exiting.")
+            return
 
-    pcd = prepare_point_cloud(pcd)
-    if pcd is None:
-        print("Failed to prepare point cloud. Exiting.")
-        return
-
-    o3d.visualization.draw_geometries([pcd], window_name = "Loaded Point Cloud")
-    #visualize_point_clouds(pcd)
+        pcd = prepare_point_cloud(pcd)
+        if pcd is None:
+            print("Failed to prepare point cloud. Exiting.")
+            return
     
-    '''
-    #cylinder for test
-    
-    cyl = create_cylinder_point_cloud(radius=2.0, height=8.0, num_points=1000)
-    cyl = create_cylinder_point_cloud_with_seed(radius=2.0, height=8.0, num_points=1000, seed = 12345)
-    pcd = cyl
-    
-    pcd.paint_uniform_color([0, 0, 0])
-    pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=1, max_nn=30))
-    o3d.visualization.draw([pcd], title = "Generated Cylinder")
-    '''
+        o3d.visualization.draw_geometries([pcd], window_name = "Loaded Point Cloud")
+        #visualize_point_clouds(pcd)
     
     # save the points and normal into np array
     pcyl = np.asarray(pcd.points)
@@ -357,6 +358,7 @@ def process_directory(directory):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage:")
+        print("  For test : python script.py --test <path_to_ply_file> True/False")
         print("  For single file: python script.py <path_to_ply_file>")
         print("  For multiple files: python script.py <path_to_ply_file1> [<path_to_ply_file2> ...]")
         print("  For directory: python script.py --dir <path_to_directory>")
@@ -367,6 +369,15 @@ if __name__ == "__main__":
             print("For directory mode, please provide exactly one directory path")
             sys.exit(1)
         file_paths = process_directory(sys.argv[2])
+    elif sys.argv[1].lower() == "--test":
+        if sys.argv[3] == "True":
+            cylinder = True
+        elif sys.argv[3] == "False":
+            cylinder = False
+        else: 
+            print(f"Error: 3rd argument must be True or False")
+            
+        test(sys.argv[2], cylinder)
     else:
         # Check if all provided files exist and have .ply extension
         file_paths = []

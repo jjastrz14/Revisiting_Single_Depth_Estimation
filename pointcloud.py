@@ -10,6 +10,7 @@ from kneed import KneeLocator
 from typing import List, Tuple
 import colorsys
 import os 
+import argparse
 
 ############## PLAN ##################
 '''
@@ -67,10 +68,10 @@ def apply_threshold_to_semantics(semantic_image, threshold=0.3):
     # Apply threshold to the normalized image
     binary_mask = (normalized_image >= threshold).astype(int)
     
-    plt.imshow(binary_mask)
-    plt.title("Binary mask")
-    plt.axis('off')  # Turn off axis numbers
-    plt.show()
+    #plt.imshow(binary_mask)
+    #plt.title("Binary mask")
+    #plt.axis('off')  # Turn off axis numbers
+    #plt.show()
     
     return binary_mask
 
@@ -446,14 +447,55 @@ def save_point_clouds(point_clouds: List[o3d.geometry.PointCloud],
         else:
             print(f"Failed to save point cloud to {filepath}")
 
+def plot_info(rgb, depth, semantics, mask): 
+    
+        # Create a figure with 4 subplots
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 10))
+
+    # Plot RGB image
+    ax1.imshow(rgb)
+    ax1.set_title('RGB Image')
+    ax1.axis('off')
+
+    # Plot Depth image
+    ax2.imshow(depth, cmap='viridis')
+    ax2.set_title('Depth Estimation')
+    ax2.axis('off')
+
+    # Plot Semantic image
+    ax3.imshow(semantics, cmap='viridis')
+    ax3.set_title('Semantic Segmentation')
+    ax3.axis('off')
+    
+    # Plot Masekd Semantic image
+    ax4.imshow(mask, cmap='viridis')
+    ax4.set_title('Masked Semantics')
+    ax4.axis('off')
+
+    # Adjust the layout and display the plot
+    plt.tight_layout()
+    output_path = 'combined_plot.png'
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+
+    print(f"Plot saved to {output_path}")
 
 
-def main(semantic_file_path, output_path):
+
+def main():
+    
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--input", help="Input image")
+    parser.add_argument("--output_path", help="Output folder")
+    parser.add_argument("--output_ply_dir", help = "Output folder of .ply files")
+
+    args=parser.parse_args()
+    
     # Load images
     rgb_path = "data/preprocessed_image.png"
     depth_path = "data/depth.png"  
     #semantic_path = "data/semantic_tvmonitor.png"
-    semantic_path = semantic_file_path
+    semantic_path = args.input
+    output_path = args.output_path
     
     rgb_image = load_image(rgb_path)
     depth_image = load_image(depth_path)
@@ -471,6 +513,7 @@ def main(semantic_file_path, output_path):
     #plt.imshow(semantic_image)
     #plt.axis('off')  # Turn off axis numbers
     #plt.show()
+    
     
     # Create pointcloud
     pcd, mask = create_pointcloud_from_rgbd(rgb_image, depth_image, semantic_image, colors = True)
@@ -522,16 +565,13 @@ def main(semantic_file_path, output_path):
     o3d.visualization.draw_geometries(complex_clouds, window_name = "complex clusters")
     o3d.visualization.draw_geometries(linear_clouds, window_name = "linear clusters")
     
-    output_directory = "./pointclouds/"
+    output_directory = str(args.output_ply_dir)
     # If you have classified point clouds, you might want to save them separately:
     save_point_clouds(complex_clouds, os.path.join(output_directory, "complex"), base_name="complex", format="ply")
     save_point_clouds(planar_clouds, os.path.join(output_directory, "planar"), base_name="planar", format="ply")
     save_point_clouds(linear_clouds, os.path.join(output_directory, "linear"), base_name="linear", format="ply")
 
-
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) != 3:
-        print("Usage: python script.py <path_to_png_file> <path_to_output>")
-        sys.exit(1)
-    main(sys.argv[1], sys.argv[2])
+    plot_info(rgb_image, depth_image, semantic_image, mask)
+    
+if __name__ == '__main__':
+    main()
