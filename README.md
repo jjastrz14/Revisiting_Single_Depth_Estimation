@@ -1,4 +1,38 @@
 # Revisiting Single Image Depth Estimation: Toward Higher Resolution Maps with Accurate Object Boundaries
+
+
+## Usage
+
+Run the program using the following command:
+
+```
+python3 run_all.py [options]
+```
+
+### Options
+
+- `--input_image`: Path to the input image for infer.py (default: "data/demo/img_nyu2.png")
+- `--infer_output`: Output directory for infer.py results (default: "data/demo/")
+- `--semantic_image`: Path to the semantic image for pointcloud.py (default: "data/semantic_tvmonitor.png")
+- `--pointcloud_file_name`: Name of the output file for pointcloud.py (default: "tv_pointcloud.ply")
+- `--pointcloud_directory`: Directory to save the generated point clouds (default: "pointclouds/complex")
+
+### Example
+
+To run the program with default settings:
+
+```
+python3 run_all.py
+```
+
+To run the program with custom settings:
+
+```
+python3 run_all.py --semantic_image custom_semantic.png --pointcloud_file_name custom_output.ply --pointcloud_directory custom_pointclouds
+```
+
+
+
 <br>
 Junjie Hu, Mete Ozay, Yan Zhang, Takayuki Okatani https://arxiv.org/abs/1803.08673
 
