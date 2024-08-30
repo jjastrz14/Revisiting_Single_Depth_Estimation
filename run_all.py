@@ -49,8 +49,8 @@ def main():
     check_file_exists(args.semantic_image)
 
     # Run infer.py
-    print("Running infer.py...")
-    run_command(["python3", "infer.py", "--input", args.input_image, "--output_path", args.infer_output])
+    #print("Running infer.py...")
+    #run_command(["python3", "infer.py", "--input", args.input_image, "--output_path", args.infer_output])
 
     # Run pointcloud.py
     print("\nRunning pointcloud.py...")

@@ -149,6 +149,9 @@ def T_Linkage(pointcloud, model = 'plane'):
         if model == 'plane':
             choose = np.random.randint(0, pointcloud.shape[0], 2)
             pc = pointcloud[choose]
+            
+            #check if the points are colinear!
+            
             pc = np.vstack((pc, np.zeros(3).reshape((1,3))))
             flag, m, dist = fit_plane(pc, pointcloud)
             if flag == False: 

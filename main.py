@@ -108,7 +108,7 @@ def test(file_path, cylinder):
         
         pcd.paint_uniform_color([0, 0, 0])
         pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=1, max_nn=30))
-        o3d.visualization.draw([pcd], title = "Generated Cylinder")
+        o3d.visualization.draw_geometries([pcd], window_name = "Generated Cylinder")
     
     else: 
         print(f"Running test function on {file_path}")
@@ -372,8 +372,10 @@ if __name__ == "__main__":
     elif sys.argv[1].lower() == "--test":
         if sys.argv[3] == "True":
             cylinder = True
+            file_paths = process_directory(sys.argv[2])
         elif sys.argv[3] == "False":
             cylinder = False
+            file_paths = process_directory(sys.argv[2])
         else: 
             print(f"Error: 3rd argument must be True or False")
             
@@ -390,8 +392,8 @@ if __name__ == "__main__":
                 continue
             file_paths.append(file_path)
     
-    if not file_paths:
-        print("No valid .ply files provided.")
-        sys.exit(1)
+        if not file_paths:
+            print("No valid .ply files provided.")
+            sys.exit(1)
     
     main(file_paths)
