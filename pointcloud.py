@@ -567,9 +567,9 @@ def main():
     
     output_directory = str(args.output_ply_dir)
     # If you have classified point clouds, you might want to save them separately:
-    save_point_clouds(complex_clouds, os.path.join(output_directory, "complex"), base_name="complex", format="ply")
+    save_point_clouds(complex_clouds, os.path.join(output_directory, "pointclouds"), base_name="complex", format="ply")
     save_point_clouds(planar_clouds, os.path.join(output_directory, "planar"), base_name="planar", format="ply")
-    save_point_clouds(linear_clouds, os.path.join(output_directory, "linear"), base_name="linear", format="ply")
+    save_point_clouds(linear_clouds, os.path.join(output_directory, "pointclouds"), base_name="linear", format="ply")
 
     plot_info(rgb_image, depth_image, semantic_image, mask)
     

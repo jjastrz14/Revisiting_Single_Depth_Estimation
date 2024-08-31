@@ -135,15 +135,14 @@ def update_PF(prefFunc, tobemerged, trace_points, Tanidistance, TaniIndex): # to
 def casual_color():
     return np.random.random(3)
 
-def cheeckColinear(points):
+def checkCollinear(points, epsilon=1e-6):
     x, y, z = points.T
     v1 = y - x
     v2 = z - x
-    cro = np.cross(v1, v2)
-    if np.all(cro == 0):
-        return True
-    else:
-        return False
+    cross = np.cross(v1, v2)
+    magnitude = np.linalg.norm(cross)
+    is_collinear = magnitude < epsilon
+    return is_collinear
 
 # main body of T-linkage, a multi model procedure proposed by prof. Luca Magri
 def T_Linkage(pointcloud, model = 'plane'):
@@ -154,21 +153,36 @@ def T_Linkage(pointcloud, model = 'plane'):
     tau = 0.05
     # search for H models and compute distances
     founded_models = []
+    max_attempts = 1000  # Maximum number of attempts to find non-collinear points
     for i in range(50):
         # TODO: choose random points, 2 (+ origin) for plane, 3 for circle
         if model == 'plane':
-            choose = np.random.randint(0, pointcloud.shape[0], 2)
-            pc = pointcloud[choose]
-            
-            #check if the points are colinear!
-            pc = np.vstack((pc, np.zeros(3).reshape((1,3))))
-            while cheeckColinear(pc):
+            attempts = 0 
+            while attempts < max_attempts:
+                # Choose two random points
                 choose = np.random.randint(0, pointcloud.shape[0], 2)
                 pc = pointcloud[choose]
+                
+                # Add the origin as the third point
                 pc = np.vstack((pc, np.zeros(3).reshape((1,3))))
+                
+                # Check if the points are NOT collinear
+                if not checkCollinear(pc):
+                    #print("Found non-collinear points.")
+                    break
+                
+                #print("Points are collinear. Selecting new points.")
+                attempts += 1
+                
+            if attempts == max_attempts:
+                print(f"Failed to find non-collinear points for plane {i + 1} after {max_attempts} attempts.")
+                continue
+             
+            # At this point, pc should contains two points from pointcloud and the origin, non-collinear
             flag, m, dist = fit_plane(pc, pointcloud)
             if flag == False: 
                 continue
+                
             dist = np.array(dist)
             #print(dist)
             
@@ -176,6 +190,8 @@ def T_Linkage(pointcloud, model = 'plane'):
             choose = np.random.randint(0, pointcloud.shape[0], 10)
             pc = pointcloud[choose]
             m, dist = fit_circle(pc, pointcloud)
+            
+            
         founded_models.append((m, dist))
     
     # for each model, compute the Preference Function

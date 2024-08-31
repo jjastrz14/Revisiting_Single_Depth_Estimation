@@ -15,3 +15,7 @@ pointclouds/linear/linear_0000.ply
 pointclouds/linear/linear_0001.ply
 plots_report/combined_plot.png
 combined_plot.png
+ply_files/pointclouds/complex_0000.ply
+ply_files/pointclouds/complex_0001.ply
+ply_files/pointclouds/linear_0000.ply
+ply_files/pointclouds/linear_0001.ply

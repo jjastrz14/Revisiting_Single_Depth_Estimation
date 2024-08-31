@@ -54,11 +54,12 @@ def main():
 
     # Run pointcloud.py
     print("\nRunning pointcloud.py...")
-    run_command(["python3", "pointcloud.py", "--input", args.semantic_image, "--output_path", args.pointcloud_file_name])
+    run_command(["python3", "pointcloud.py", "--input", args.semantic_image, "--output_path", args.pointcloud_file_name, "--output_ply_dir", args.pointcloud_directory])
 
+    path_to_pointclouds = args.pointcloud_directory + "/pointclouds"
     # Run main.py
     print("\nRunning main.py...")
-    run_command(["python3", "main.py", "--dir", args.pointcloud_directory])
+    run_command(["python3", "main.py", "--dir", path_to_pointclouds])
     
     print("\nFinished with success!")
 
