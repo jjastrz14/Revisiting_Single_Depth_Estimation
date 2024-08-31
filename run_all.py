@@ -33,7 +33,8 @@ def main():
     parser = argparse.ArgumentParser(description="Run multiple Python scripts in sequence.")
     parser.add_argument("--input_image", default="data/demo/img_nyu2.png", help="Input image for infer.py")
     parser.add_argument("--infer_output", default="data/demo/", help="Output directory for infer.py")
-    parser.add_argument("--semantic_image", default="data/semantic_tvmonitor.png", help="Semantic image for pointcloud.py")
+    parser.add_argument("--semantic_dir", default="data", help="Directory for storing semantic results")
+    parser.add_argument("--semantic_image", default="semantic_tvmonitor.png", help="Semantic image for pointcloud.py generation")
     parser.add_argument("--pointcloud_file_name", default="tv_pointcloud.ply", help="Output file for pointcloud.py")
     parser.add_argument("--pointcloud_directory", default="pointclouds/complex", help="Output folder to save pointclouds")
     args = parser.parse_args()
@@ -44,17 +45,22 @@ def main():
     ensure_directory(args.infer_output)
     ensure_directory(args.pointcloud_directory)
 
+    path_to_pre_rgb = args.semantic_dir + "/preprocessed_image.png"
+    path_to_depth = args.semantic_dir + "/depth.png"
+    path_to_semantics = args.semantic_dir + "/" + args.semantic_image
+    
     # Check if input files exist
     check_file_exists(args.input_image)
-    check_file_exists(args.semantic_image)
-
+    check_file_exists(path_to_depth)
+    check_file_exists(path_to_semantics)
+    
     # Run infer.py
     #print("Running infer.py...")
     #run_command(["python3", "infer.py", "--input", args.input_image, "--output_path", args.infer_output])
 
     # Run pointcloud.py
     print("\nRunning pointcloud.py...")
-    run_command(["python3", "pointcloud.py", "--input", args.semantic_image, "--output_path", args.pointcloud_file_name, "--output_ply_dir", args.pointcloud_directory])
+    run_command(["python3", "pointcloud.py", "--input", path_to_semantics, "--input_pre_rgb", path_to_pre_rgb ,"--input_depth", path_to_depth ,"--output_path", args.pointcloud_file_name, "--output_ply_dir", args.pointcloud_directory])
 
     path_to_pointclouds = args.pointcloud_directory + "/pointclouds"
     # Run main.py

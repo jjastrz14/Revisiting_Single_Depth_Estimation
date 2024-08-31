@@ -511,15 +511,19 @@ def plot_info(rgb, depth, semantics, mask):
 def main():
     
     parser=argparse.ArgumentParser()
-    parser.add_argument("--input", help="Input image")
+    parser.add_argument("--input", help="Orginal input image")
+    parser.add_argument("--input_pre_rgb", help="Input preprocessed RGB image")
+    parser.add_argument("--input_depth", help="Input RGB image")
     parser.add_argument("--output_path", help="Output folder")
     parser.add_argument("--output_ply_dir", help = "Output folder of .ply files")
 
     args=parser.parse_args()
     
     # Load images
-    rgb_path = "data/preprocessed_image.png"
-    depth_path = "data/depth.png"  
+    #rgb_path = "data/preprocessed_image.png"
+    #depth_path = "data/depth.png"  
+    rgb_path = args.input_pre_rgb
+    depth_path = args.input_depth
     #semantic_path = "data/semantic_tvmonitor.png"
     semantic_path = args.input
     output_path = args.output_path
