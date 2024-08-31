@@ -146,7 +146,7 @@ def checkCollinear(points, epsilon=1e-9):
     max_distance = np.max(np.sqrt(np.sum(centered_points**2, axis=1)))
     
     # Avoid division by zero
-    if max_distance < 1e-15:
+    if max_distance < 1e-20:
         return True  # All points are essentially the same
 
     normalized_points = centered_points / max_distance
@@ -156,9 +156,9 @@ def checkCollinear(points, epsilon=1e-9):
     v1 = y - x
     v2 = z - x
     cross = np.cross(v1, v2)
-    magnitude = np.linalg.norm(cross)
+   # magnitude = np.linalg.norm(cross)
     
-    is_collinear = magnitude < epsilon
+    is_collinear = np.all(cross < epsilon) 
     return is_collinear
 
 # main body of T-linkage, a multi model procedure proposed by prof. Luca Magri
