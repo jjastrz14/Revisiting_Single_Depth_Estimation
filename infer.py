@@ -134,7 +134,7 @@ def infer_and_save_data(nyu2_loader, model, semantic_model, semantic_preprocesso
 
         # Save RGB image as numpy array
         np.save(os.path.join(output_path, f"rgb_{i}.npy"), image_preprocessed)
-        print(f"Saved RGB image with shape: {image_preprocessed.shape}")
+        #print(f"Saved RGB image with shape: {image_preprocessed.shape}")
 
         # Save visualizable version
         preprocessed_rgb.save(os.path.join(output_path, f"rgb_{i}_visual.png"))
@@ -158,7 +158,7 @@ def infer_and_save_data(nyu2_loader, model, semantic_model, semantic_preprocesso
             print(f"Saved depth image with shape: {depth_array.shape}")
 
             # Save visualizable version of depth
-            plt.imsave(os.path.join(output_path, f"depth_{i}_visual.png"), depth_array, cmap='viridis')
+            #plt.imsave(os.path.join(output_path, f"depth_{i}_visual.png"), depth_array, cmap='viridis')
 
             # Optional: Save depth as TIFF for high precision visualization
             tifffile.imwrite(os.path.join(output_path, f"depth_{i}.tiff"), depth_array)
@@ -172,7 +172,7 @@ def infer_and_save_data(nyu2_loader, model, semantic_model, semantic_preprocesso
                 print(f"Saved semantic image {j} with shape: {semantic_array.shape}")
 
                 # Save visualizable version of semantic
-                plt.imsave(os.path.join(output_path, f"semantic_{i}_{j if categories is None else categories[j]}_visual.png"), semantic_array, cmap='jet')
+                #plt.imsave(os.path.join(output_path, f"semantic_{i}_{j if categories is None else categories[j]}_visual.png"), semantic_array, cmap='jet')
 
         print(f"Processed and saved images for item {i}")
         

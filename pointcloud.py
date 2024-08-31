@@ -11,6 +11,7 @@ from typing import List, Tuple
 import colorsys
 import os 
 import argparse
+import tifffile
 
 ############## PLAN ##################
 '''
@@ -96,9 +97,30 @@ def binary_mask_to_rgb(binary_mask, color_positive=(255, 0, 0), color_negative=(
     return rgb_image
 
     
-def create_pointcloud_from_rgbd(rgb_image, depth_image, semantic_image, depth_scale=100.0, depth_trunc=0.01, colors = False):
-    """Create a pointcloud from RGB and depth images."""
+def create_pointcloud_from_rgbd(rgb_image, depth_image, semantic_image, depth_unit='meters', depth_trunc=5.0, colors = False):
+    """
+    Create a pointcloud from RGB, depth, and semantic images.
+    
+    Parameters:
+    - depth_unit: 'meters' or 'millimeters'
+    - depth_trunc: Maximum depth value in meters
+    """
     height, width = rgb_image.shape[:2]
+    
+    # Ensure depth_image is in float32 format
+    depth_image = depth_image.astype(np.float32)
+    
+    # Set depth_scale based on the unit
+    if depth_unit == 'millimeters':
+        depth_scale = 1000.0  # 1 meter = 1000 millimeters
+    elif depth_unit == 'meters':
+        depth_scale = 1.0
+    else:
+        raise ValueError("depth_unit must be 'meters' or 'millimeters'")
+
+    # Debug: Print depth image statistics
+    print(f"Depth image shape: {depth_image.shape}")
+    print(f"Depth range: {depth_image.min() * depth_scale:.3f} to {depth_image.max() * depth_scale:.3f} meters")
     
     # Create Open3D images
     rgb_o3d = o3d.geometry.Image(rgb_image)
@@ -113,6 +135,12 @@ def create_pointcloud_from_rgbd(rgb_image, depth_image, semantic_image, depth_sc
 
     # Create pointcloud from RGBD image
     pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic)
+    
+    # Apply voxel downsampling to reduce noise and point density
+    #pcd = pcd.voxel_down_sample(voxel_size=0.01)
+    
+    # Remove statistical outliers
+    #pcd, _ = pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
     
     semantics_masked = apply_threshold_to_semantics(semantic_image, threshold=0.4)
     
@@ -532,38 +560,68 @@ def convert_depth_image(depth):
     
     return depth_image
 
+def load_and_visualize_images(rgb_path, depth_path, semantic_path):
+    # Load RGB image
+    rgb_image = np.load(rgb_path)
+    print(f"Loaded RGB image with shape: {rgb_image.shape}")
+
+    # Load depth image
+    depth_image = tifffile.imread(depth_path)
+    print(f"Loaded depth image with shape: {depth_image.shape}")
+
+    # Load semantic image
+    semantic_image = np.load(semantic_path)
+    print(f"Loaded semantic image with shape: {semantic_image.shape}")
+
+    # Visualize the images
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
+
+    # RGB image
+    ax1.imshow(rgb_image)
+    ax1.set_title('RGB Image')
+    ax1.axis('off')
+
+    # Depth image
+    depth_display = ax2.imshow(depth_image, cmap='viridis')
+    ax2.set_title('Depth Image')
+    ax2.axis('off')
+    #plt.colorbar(depth_display, ax=ax2, fraction=0.046, pad=0.04)
+
+    # Semantic image
+    semantic_display = ax3.imshow(semantic_image, cmap='jet')
+    ax3.set_title('Semantic Image (TV Monitor)')
+    ax3.axis('off')
+    #plt.colorbar(semantic_display, ax=ax3, fraction=0.046, pad=0.04)
+
+    plt.tight_layout()
+    plt.show()
+
+    return rgb_image, depth_image, semantic_image
+
 def main():
     
-    parser=argparse.ArgumentParser()
-    parser.add_argument("--input", help="Orginal input image")
-    parser.add_argument("--input_pre_rgb", help="Input preprocessed RGB image")
-    parser.add_argument("--input_depth", help="Input RGB image")
-    parser.add_argument("--output_path", help="Output folder")
-    parser.add_argument("--output_ply_dir", help = "Output folder of .ply files")
+    #parser=argparse.ArgumentParser()
+    #parser.add_argument("--input", help="Orginal input image")
+    #parser.add_argument("--input_pre_rgb", help="Input preprocessed RGB image")
+    #parser.add_argument("--input_depth", help="Input RGB image")
+    #parser.add_argument("--output_path", help="Output folder")
+    #parser.add_argument("--output_ply_dir", help = "Output folder of .ply files")
 
-    args=parser.parse_args()
+    #args=parser.parse_args()
     
     # Load images
-    #rgb_path = "data/preprocessed_image.png"
-    #depth_path = "data/depth.png"  
-    rgb_path = args.input_pre_rgb
-    depth_path = args.input_depth
-    #semantic_path = "data/semantic_tvmonitor.png"
-    semantic_path = args.input
-    output_path = args.output_path
+    rgb_path_viz = "data_check/rgb_0_visual.png"
+    depth_path_viz = "data_check/depth_0_visual.png"  
+    semantic_path_viz = "data_check/semantic_0_tvmonitor_visual.png"
     
-    rgb_image = load_image(rgb_path)
-    depth_image = load_image(depth_path)
-    semantic_image = load_image(semantic_path)
+    rgb_path = "data_check/rgb_0.npy"
+    depth_path = "data_check/depth_0.tiff"
+    semantic_path = "data_check/semantic_0_tvmonitor.npy"
     
-    # Ensure depth image is grayscale
-    if len(depth_image.shape) == 3:
-       depth_image = np.mean(depth_image, axis=2).astype(np.uint8)
-       
-        
-    #depth_image = depth_image[:, :, 3].astype(np.uint8)
-    semantic_image = semantic_image[:, :, 0].astype(np.uint8)
-        
+    output_path = "./"
+    
+    rgb_image, depth_image, semantic_image = load_and_visualize_images(rgb_path, depth_path, semantic_path)
+    
     # Create pointcloud
     pcd, mask = create_pointcloud_from_rgbd(rgb_image, depth_image, semantic_image, colors = True)
     
@@ -624,7 +682,8 @@ def main():
     o3d.visualization.draw_geometries(complex_clouds, window_name = "complex clusters")
     o3d.visualization.draw_geometries(linear_clouds, window_name = "linear clusters")
     
-    output_directory = str(args.output_ply_dir)
+    #output_directory = str(args.output_ply_dir)
+    output_directory = "./"
     # If you have classified point clouds, you might want to save them separately:
     save_point_clouds(complex_clouds, os.path.join(output_directory, "pointclouds"), base_name="complex", format="ply")
     save_point_clouds(planar_clouds, os.path.join(output_directory, "planar"), base_name="planar", format="ply")
