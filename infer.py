@@ -41,6 +41,10 @@ def main():
     parser.add_argument("--output_path", help="Output folder")
 
     args=parser.parse_args()
+    
+    # Create the output directory if it doesn't exist
+    os.makedirs(args.output_path, exist_ok=True)
+    print(f"Output directory: {args.output_path}")
 
     model = define_model(is_resnet=False, is_densenet=False, is_senet=True)
     model = torch.nn.DataParallel(model).cuda()
