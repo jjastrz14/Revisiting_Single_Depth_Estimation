@@ -135,7 +135,7 @@ def update_PF(prefFunc, tobemerged, trace_points, Tanidistance, TaniIndex): # to
 def casual_color():
     return np.random.random(3)
 
-def checkCollinear(points, epsilon=1e-6):
+def checkCollinear(points, epsilon=1e-9):
     # Ensure we have at least 3 points
     if points.shape[0] < 3:
         return True  # Less than 3 points are always collinear
