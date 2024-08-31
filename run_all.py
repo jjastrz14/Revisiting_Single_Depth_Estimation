@@ -51,12 +51,14 @@ def main():
     
     # Check if input files exist
     check_file_exists(args.input_image)
-    check_file_exists(path_to_depth)
-    check_file_exists(path_to_semantics)
     
+    #RUN infer.py WITH GPU 
     # Run infer.py
     #print("Running infer.py...")
     #run_command(["python3", "infer.py", "--input", args.input_image, "--output_path", args.infer_output])
+    
+    check_file_exists(path_to_depth)
+    check_file_exists(path_to_semantics)
 
     # Run pointcloud.py
     print("\nRunning pointcloud.py...")

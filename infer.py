@@ -100,7 +100,7 @@ def test(nyu2_loader, model, semantic_model, semantic_preprocessor=None, output_
         depth = Image.fromarray(out.view(out.size(2),out.size(3)).data.cpu().numpy())
         depth = depth.resize((image.size(3), image.size(2)))
 
-        print(f"output resize: {depth.size}")
+        print(f"Depth image resize: {depth.size}")
         
         matplotlib.image.imsave(os.path.join(output_path, "depth.png"), depth)
 
@@ -108,6 +108,8 @@ def test(nyu2_loader, model, semantic_model, semantic_preprocessor=None, output_
             semantic = Image.fromarray(semantic_out[0][i].data.cpu().numpy())
             semantic = semantic.resize((image.size(3),image.size(2)))
             matplotlib.image.imsave(os.path.join(output_path, "semantic_{}.png".format(i if categories == None else categories[i])), semantic)
-
+        
+        print(f"Semantic image resize: {semantic.size}")
+        
 if __name__ == '__main__':
     main()

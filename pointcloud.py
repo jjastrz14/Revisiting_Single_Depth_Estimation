@@ -34,9 +34,9 @@ def load_image(file_path):
     img = Image.open(file_path)
     img_array = np.array(img)
    # Display the image
-    #plt.imshow(img_array)
-    #plt.axis('off')  # Turn off axis numbers
-    #plt.show()
+    plt.imshow(img_array)
+    plt.axis('off')  # Turn off axis numbers
+    plt.show()
     return img_array
 
 def apply_threshold_to_semantics(semantic_image, threshold=0.3):
@@ -67,11 +67,6 @@ def apply_threshold_to_semantics(semantic_image, threshold=0.3):
     
     # Apply threshold to the normalized image
     binary_mask = (normalized_image >= threshold).astype(int)
-    
-    #plt.imshow(binary_mask)
-    #plt.title("Binary mask")
-    #plt.axis('off')  # Turn off axis numbers
-    #plt.show()
     
     return binary_mask
 
@@ -485,17 +480,17 @@ def plot_info(rgb, depth, semantics, mask):
     ax1.axis('off')
 
     # Plot Depth image
-    ax2.imshow(depth, cmap='viridis')
+    ax2.imshow(depth, cmap='jet')
     ax2.set_title('Depth Estimation')
     ax2.axis('off')
 
     # Plot Semantic image
-    ax3.imshow(semantics, cmap='viridis')
+    ax3.imshow(semantics, cmap='jet')
     ax3.set_title('Semantic Segmentation')
     ax3.axis('off')
     
     # Plot Masekd Semantic image
-    ax4.imshow(mask, cmap='viridis')
+    ax4.imshow(mask, cmap='jet')
     ax4.set_title('Masked Semantics')
     ax4.axis('off')
 
@@ -506,7 +501,36 @@ def plot_info(rgb, depth, semantics, mask):
 
     print(f"Plot saved to {output_path}")
 
-
+def convert_depth_image(depth):
+    
+    rgba_image = depth
+    
+    # Convert the image to 32-bit float
+    rgba_image = rgba_image.astype(np.float32)
+    
+    # Normalize each channel to [0, 1] range
+    rgba_image /= 255.0
+    
+    # Combine channels
+    # This assumes each channel contributes equally to the final depth
+    # You may need to adjust the weights if some channels are more significant
+    depth_image = (rgba_image[:,:,0] + 
+                   rgba_image[:,:,1] * 256 + 
+                   rgba_image[:,:,2] * 256**2 + 
+                   rgba_image[:,:,3] * 256**3)
+    
+    # Normalize the combined depth to [0, 1] range
+    depth_image = (depth_image - depth_image.min()) / (depth_image.max() - depth_image.min())
+    
+    # Convert back to 8-bit for saving as an image
+    depth_image = (depth_image * 255).astype(np.uint8)
+    
+    print(f"Converted depth image shape: {depth_image.shape}")
+    
+    # Optionally, save the depth image
+    Image.fromarray(depth_image).save("depth_image_claude.png")
+    
+    return depth_image
 
 def main():
     
@@ -532,20 +556,14 @@ def main():
     depth_image = load_image(depth_path)
     semantic_image = load_image(semantic_path)
     
-    print(semantic_image.shape)
-
     # Ensure depth image is grayscale
     if len(depth_image.shape) == 3:
-        depth_image = np.mean(depth_image, axis=2).astype(np.uint8)
+       depth_image = np.mean(depth_image, axis=2).astype(np.uint8)
+       
         
-    if len(semantic_image.shape) == 3:
-        semantic_image = np.mean(semantic_image, axis=2).astype(np.uint8)
+    #depth_image = depth_image[:, :, 3].astype(np.uint8)
+    semantic_image = semantic_image[:, :, 0].astype(np.uint8)
         
-    #plt.imshow(semantic_image)
-    #plt.axis('off')  # Turn off axis numbers
-    #plt.show()
-    
-    
     # Create pointcloud
     pcd, mask = create_pointcloud_from_rgbd(rgb_image, depth_image, semantic_image, colors = True)
     
