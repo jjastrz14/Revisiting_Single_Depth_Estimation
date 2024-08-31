@@ -135,6 +135,16 @@ def update_PF(prefFunc, tobemerged, trace_points, Tanidistance, TaniIndex): # to
 def casual_color():
     return np.random.random(3)
 
+def cheeckColinear(points):
+    x, y, z = points.T
+    v1 = y - x
+    v2 = z - x
+    cro = np.cross(v1, v2)
+    if np.all(cro == 0):
+        return True
+    else:
+        return False
+
 # main body of T-linkage, a multi model procedure proposed by prof. Luca Magri
 def T_Linkage(pointcloud, model = 'plane'):
     iput_gauss_sphere = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pointcloud.astype('float64'))).paint_uniform_color([1,1,0])
@@ -151,8 +161,11 @@ def T_Linkage(pointcloud, model = 'plane'):
             pc = pointcloud[choose]
             
             #check if the points are colinear!
-            
             pc = np.vstack((pc, np.zeros(3).reshape((1,3))))
+            while cheeckColinear(pc):
+                choose = np.random.randint(0, pointcloud.shape[0], 2)
+                pc = pointcloud[choose]
+                pc = np.vstack((pc, np.zeros(3).reshape((1,3))))
             flag, m, dist = fit_plane(pc, pointcloud)
             if flag == False: 
                 continue
