@@ -136,11 +136,28 @@ def casual_color():
     return np.random.random(3)
 
 def checkCollinear(points, epsilon=1e-6):
-    x, y, z = points.T
+    # Ensure we have at least 3 points
+    if points.shape[0] < 3:
+        return True  # Less than 3 points are always collinear
+
+    # Normalize the points
+    centroid = np.mean(points, axis=0)
+    centered_points = points - centroid
+    max_distance = np.max(np.sqrt(np.sum(centered_points**2, axis=1)))
+    
+    # Avoid division by zero
+    if max_distance < 1e-15:
+        return True  # All points are essentially the same
+
+    normalized_points = centered_points / max_distance
+
+    # Check collinearity on normalized points
+    x, y, z = normalized_points.T
     v1 = y - x
     v2 = z - x
     cross = np.cross(v1, v2)
     magnitude = np.linalg.norm(cross)
+    
     is_collinear = magnitude < epsilon
     return is_collinear
 
@@ -153,7 +170,7 @@ def T_Linkage(pointcloud, model = 'plane'):
     tau = 0.05
     # search for H models and compute distances
     founded_models = []
-    max_attempts = 1000  # Maximum number of attempts to find non-collinear points
+    max_attempts = 2000 # Maximum number of attempts to find non-collinear points
     for i in range(50):
         # TODO: choose random points, 2 (+ origin) for plane, 3 for circle
         if model == 'plane':

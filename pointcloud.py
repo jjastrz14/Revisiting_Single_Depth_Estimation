@@ -258,6 +258,33 @@ def add_noise(points: np.ndarray, noise_level: float = 0.01) -> np.ndarray:
     noise = np.random.normal(0, noise_level, points.shape)
     return points + noise
 
+def normalize_o3d_point_cloud(pcd):
+    # Convert to numpy array
+    points = np.asarray(pcd.points)
+
+    # Center the point cloud
+    centroid = np.mean(points, axis=0)
+    centered_points = points - centroid
+
+    # Scale the point cloud
+    max_distance = np.max(np.sqrt(np.sum(centered_points**2, axis=1)))
+    normalized_points = centered_points / max_distance
+
+    # Create a new Open3D point cloud with normalized points
+    normalized_pcd = o3d.geometry.PointCloud()
+    normalized_pcd.points = o3d.utility.Vector3dVector(normalized_points)
+
+    # If the original point cloud has colors, normalize them too
+    if pcd.has_colors():
+        normalized_pcd.colors = pcd.colors
+
+    # If the original point cloud has normals, keep them (they don't need normalization)
+    if pcd.has_normals():
+        normalized_pcd.normals = pcd.normals
+
+    return normalized_pcd, centroid, max_distance
+
+
 def adaptive_clustering(pcd: o3d.geometry.PointCloud, 
                         method: str = 'optics', 
                         min_samples: int = 10, 
@@ -546,8 +573,18 @@ def main():
     # Visualize pointcloud
     o3d.visualization.draw_geometries([masked_pcd], window_name = "Masked pointcloud")
     
+    normalized_pcd, centroid, scale = normalize_o3d_point_cloud(masked_pcd)
+    #print(np.asarray(normalized_pcd.points))
+    
+    # To denormalize :
+    # original_points = (np.asarray(normalized_pcd.points) * scale) + centroid
+    # original_pcd = o3d.geometry.PointCloud()
+    # original_pcd.points = o3d.utility.Vector3dVector(original_points)
+    
+    #o3d.visualization.draw_geometries([normalized_pcd], window_name = "Normalised pointcloud")
+        
     # Preprocess the point cloud using adaptive clustering to generate smaller pointcloudss
-    sub_point_clouds = adaptive_clustering(masked_pcd, method='optics', min_samples=150, max_eps=50)
+    sub_point_clouds = adaptive_clustering(normalized_pcd, method='optics', min_samples=150, max_eps=0.5)
     
     print(f"Number of sub-point clouds: {len(sub_point_clouds)}")
     
