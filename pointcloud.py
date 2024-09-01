@@ -610,10 +610,6 @@ def main():
     #args=parser.parse_args()
     
     # Load images
-    rgb_path_viz = "data_check/rgb_0_visual.png"
-    depth_path_viz = "data_check/depth_0_visual.png"  
-    semantic_path_viz = "data_check/semantic_0_tvmonitor_visual.png"
-    
     rgb_path = "data_check/rgb_0.npy"
     depth_path = "data_check/depth_0.tiff"
     semantic_path = "data_check/semantic_0_tvmonitor.npy"
