@@ -97,7 +97,7 @@ def binary_mask_to_rgb(binary_mask, color_positive=(255, 0, 0), color_negative=(
     return rgb_image
 
     
-def create_pointcloud_from_rgbd(rgb_image, depth_image, semantic_image, depth_unit='meters', depth_trunc=5.0, colors = False):
+def create_pointcloud_from_rgbd(rgb_image, depth_image, semantic_image, depth_unit='meters', depth_trunc=10.0, colors = False):
     """
     Create a pointcloud from RGB, depth, and semantic images.
     
@@ -589,7 +589,7 @@ def load_and_visualize_images(rgb_path, depth_path, semantic_path):
 
     # Semantic image
     semantic_display = ax3.imshow(semantic_image, cmap='jet')
-    ax3.set_title('Semantic Image (TV Monitor)')
+    ax3.set_title('Semantic Segmentation')
     ax3.axis('off')
     #plt.colorbar(semantic_display, ax=ax3, fraction=0.046, pad=0.04)
 
@@ -600,19 +600,22 @@ def load_and_visualize_images(rgb_path, depth_path, semantic_path):
 
 def main():
     
-    #parser=argparse.ArgumentParser()
-    #parser.add_argument("--input", help="Orginal input image")
-    #parser.add_argument("--input_pre_rgb", help="Input preprocessed RGB image")
-    #parser.add_argument("--input_depth", help="Input RGB image")
-    #parser.add_argument("--output_path", help="Output folder")
-    #parser.add_argument("--output_ply_dir", help = "Output folder of .ply files")
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--input_pre_rgb", help="Input preprocessed RGB image")
+    parser.add_argument("--input_depth", help="Input RGB image")
+    parser.add_argument("--semantic_path", help="Semantic Image")
+    parser.add_argument("--output_ply_dir", help = "Output folder of .ply files")
 
-    #args=parser.parse_args()
+    args=parser.parse_args()
     
     # Load images
-    rgb_path = "data_check/rgb_0.npy"
-    depth_path = "data_check/depth_0.tiff"
-    semantic_path = "data_check/semantic_0_tvmonitor.npy"
+    #rgb_path = "data_chair/rgb_0.npy"
+    #depth_path = "data_chair/depth_0.tiff"
+    #semantic_path = "data_chair/semantic_0_person.npy"
+    
+    rgb_path = args.input_pre_rgb
+    depth_path = args.input_depth
+    semantic_path = args.semantic_path
     
     output_path = "./"
     
@@ -660,7 +663,7 @@ def main():
     #o3d.visualization.draw_geometries([normalized_pcd], window_name = "Normalised pointcloud")
         
     # Preprocess the point cloud using adaptive clustering to generate smaller pointcloudss
-    sub_point_clouds = adaptive_clustering(normalized_pcd, method='optics', min_samples=150, max_eps=0.5)
+    sub_point_clouds = adaptive_clustering(normalized_pcd, method='optics', min_samples=100, max_eps=1.8)
     
     print(f"Number of sub-point clouds: {len(sub_point_clouds)}")
     
@@ -678,8 +681,8 @@ def main():
     o3d.visualization.draw_geometries(complex_clouds, window_name = "complex clusters")
     o3d.visualization.draw_geometries(linear_clouds, window_name = "linear clusters")
     
-    #output_directory = str(args.output_ply_dir)
-    output_directory = "./"
+    output_directory = str(args.output_ply_dir)
+
     # If you have classified point clouds, you might want to save them separately:
     save_point_clouds(complex_clouds, os.path.join(output_directory, "pointclouds"), base_name="complex", format="ply")
     save_point_clouds(planar_clouds, os.path.join(output_directory, "planar"), base_name="planar", format="ply")

@@ -30,6 +30,36 @@ def load_point_cloud(file_path):
     except Exception as e:
         print(f"Error loading point cloud: {str(e)}")
         return None
+    
+def load_point_cloud_with_subsampling(file_path, max_points=2000):
+    """
+    Load a point cloud from a .ply file with error checking, debugging, and subsampling.
+    
+    Args:
+    file_path (str): Path to the .ply file.
+    max_points (int): Maximum number of points to keep after subsampling.
+    
+    Returns:
+    o3d.geometry.PointCloud: Loaded and potentially subsampled point cloud.
+    """
+    try:
+        pcd = o3d.io.read_point_cloud(file_path)
+        if not pcd.has_points():
+            raise ValueError(f"Loaded point cloud from {file_path} has no points")
+        
+        original_size = len(pcd.points)
+        print(f"Successfully loaded {original_size} points from {file_path}")
+        
+        if original_size > max_points:
+            # Perform uniform random subsampling
+            indices = np.random.choice(original_size, max_points, replace=False)
+            pcd = pcd.select_by_index(indices)
+            print(f"Subsampled point cloud to {len(pcd.points)} points")
+        
+        return pcd
+    except Exception as e:
+        print(f"Error loading point cloud: {str(e)}")
+        return None
 
 def prepare_point_cloud(pcd):
     """
@@ -243,8 +273,10 @@ def main(file_paths: Union[str, List[str]]):
     all_fitted_cylinders = []
 
     for file_path in file_paths:
-                # Load point cloud from .ply file
-        pcd = load_point_cloud(file_path)
+        # Load point cloud from .ply file
+        #pcd = load_point_cloud(file_path)
+        #load point cloud and subsample it if bigger than max_points
+        pcd = load_point_cloud_with_subsampling(file_path, max_points=1000)
         if pcd is None:
             print("Failed to load point cloud. Exiting.")
             return
@@ -342,8 +374,8 @@ def main(file_paths: Union[str, List[str]]):
     o3d.visualization.draw_geometries(all_point_clouds + all_fitted_cylinders, window_name="All Point Clouds with Fitted Cylinders")
 
     # Optionally, you can also visualize each point cloud with its fitted cylinder separately
-    for pcd, cyl in zip(all_point_clouds, all_fitted_cylinders):
-        o3d.visualization.draw_geometries([pcd, cyl], window_name=f"Point Cloud with Fitted Cylinder")
+    #for pcd, cyl in zip(all_point_clouds, all_fitted_cylinders):
+    #    o3d.visualization.draw_geometries([pcd, cyl], window_name=f"Point Cloud with Fitted Cylinder")
         
 def process_directory(directory):
     """
