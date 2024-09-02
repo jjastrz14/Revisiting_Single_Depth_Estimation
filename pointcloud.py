@@ -351,7 +351,7 @@ def adaptive_clustering(pcd: o3d.geometry.PointCloud,
             cluster_points = points[labels == label]
             
             # Add noise to the cluster points to make them non-colinear preserving the structure of pointcloud
-            #noisy_cluster_points = add_noise(cluster_points, 0.0005)
+            noisy_cluster_points = add_noise(cluster_points, 0.005)
             
             sub_pcd = o3d.geometry.PointCloud()
             sub_pcd.points = o3d.utility.Vector3dVector(cluster_points)
@@ -504,22 +504,22 @@ def plot_info(rgb, depth, semantics, mask):
 
     # Plot RGB image
     ax1.imshow(rgb)
-    ax1.set_title('RGB Image')
+    ax1.set_title('RGB Image', fontsize = 22)
     ax1.axis('off')
 
     # Plot Depth image
     ax2.imshow(depth, cmap='jet')
-    ax2.set_title('Depth Estimation')
+    ax2.set_title('Depth Estimation' , fontsize = 22)
     ax2.axis('off')
 
     # Plot Semantic image
     ax3.imshow(semantics, cmap='jet')
-    ax3.set_title('Semantic Segmentation')
+    ax3.set_title('Semantic Segmentation', fontsize = 22)
     ax3.axis('off')
     
     # Plot Masekd Semantic image
     ax4.imshow(mask, cmap='jet')
-    ax4.set_title('Masked Semantics')
+    ax4.set_title('Masked Semantics', fontsize = 22)
     ax4.axis('off')
 
     # Adjust the layout and display the plot
@@ -663,7 +663,7 @@ def main():
     #o3d.visualization.draw_geometries([normalized_pcd], window_name = "Normalised pointcloud")
         
     # Preprocess the point cloud using adaptive clustering to generate smaller pointcloudss
-    sub_point_clouds = adaptive_clustering(normalized_pcd, method='optics', min_samples=100, max_eps=1.8)
+    sub_point_clouds = adaptive_clustering(normalized_pcd, method='optics', min_samples=150, max_eps=1.8)
     
     print(f"Number of sub-point clouds: {len(sub_point_clouds)}")
     

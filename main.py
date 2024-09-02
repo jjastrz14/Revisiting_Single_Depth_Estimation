@@ -34,7 +34,7 @@ def load_point_cloud(file_path):
 def load_point_cloud_with_subsampling(file_path, max_points=2000):
     """
     Load a point cloud from a .ply file with error checking, debugging, and subsampling.
-    
+     
     Args:
     file_path (str): Path to the .ply file.
     max_points (int): Maximum number of points to keep after subsampling.

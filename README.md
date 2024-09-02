@@ -1,6 +1,5 @@
 # Revisiting Single Image Depth Estimation: Toward Higher Resolution Maps with Accurate Object Boundaries
 
-
 ## Usage
 
 Run the program using the following command:
@@ -13,7 +12,8 @@ python3 run_all.py [options]
 
 - `--input_image`: Path to the input image for infer.py (default: "data/demo/img_nyu2.png")
 - `--infer_output`: Output directory for infer.py results (default: "data/demo/")
-- `--semantic_image`: Path to the semantic image for pointcloud.py (default: "data/semantic_tvmonitor.png")
+- `--semantic_dir`: Directory for storing semantic results (default: "data")
+- `--semantic_image`: Semantic image for pointcloud.py generation (default: "semantic_0_tvmonitor.npy")
 - `--pointcloud_file_name`: Name of the output file for pointcloud.py (default: "tv_pointcloud.ply")
 - `--pointcloud_directory`: Directory to save the generated point clouds (default: "pointclouds/complex")
 
@@ -28,9 +28,24 @@ python3 run_all.py
 To run the program with custom settings:
 
 ```
-python3 run_all.py --semantic_image custom_semantic.png --pointcloud_file_name custom_output.ply --pointcloud_directory custom_pointclouds
+python3 run_all.py --semantic_image custom_semantic.npy --pointcloud_file_name custom_output.ply --pointcloud_directory custom_pointclouds
 ```
 
+## Process
+
+The `run_all.py` script performs the following steps:
+
+1. Checks and creates necessary directories.
+2. Verifies the existence of required input files.
+3. Runs `pointcloud.py` to generate point clouds.
+4. Runs `main.py` to process the generated point clouds.
+
+
+## Note
+
+The infer.py step is currently commented out in the script. If you need to run it, uncomment the relevant lines in the `run_all.py` file.
+
+## Original Research
 
 
 <br>
